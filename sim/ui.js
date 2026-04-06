@@ -98,6 +98,8 @@ class UIController {
     btnSource.addEventListener("click", () => {
       this.input.sourceMode = !this.input.sourceMode;
       btnSource.classList.toggle("active", this.input.sourceMode);
+      document.getElementById("simCanvas").classList.toggle("source-active", this.input.sourceMode);
+      document.getElementById("source-banner").classList.toggle("visible", this.input.sourceMode);
       if (navigator.vibrate) navigator.vibrate(this.input.sourceMode ? [15, 30, 15] : 10);
     });
 

@@ -46,6 +46,32 @@ class InputManager {
 
     // Prevent context menu
     c.addEventListener("contextmenu", (e) => e.preventDefault());
+
+    // Keyboard shortcuts
+    document.addEventListener("keydown", (e) => {
+      if (e.target.tagName === "INPUT") return;
+      switch(e.key.toLowerCase()) {
+        case "s":
+          document.getElementById("btn-source").click();
+          break;
+        case "g":
+          document.getElementById("btn-gravity").click();
+          break;
+        case " ":
+          e.preventDefault();
+          document.getElementById("btn-play").click();
+          break;
+        case "z":
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            document.getElementById("btn-undo").click();
+          }
+          break;
+        case "c":
+          document.getElementById("btn-clear").click();
+          break;
+      }
+    });
   }
 
   onTouchStart(e) {
