@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#1a1a2e">
+  <title>SimulatedSand</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #1a1a2e; touch-action: none; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', system-ui, sans-serif; }
+    #app { width: 100%; height: 100%; display: flex; flex-direction: column; }
+    #toolbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 4px 8px; padding-top: max(4px, env(safe-area-inset-top));
+      background: #16213e; border-bottom: 1px solid #0f3460;
+      z-index: 10; flex-shrink: 0; min-height: 44px;
+    }
+    #toolbar .btn {
+      background: #0f3460; border: none; color: #e0e0e0;
+      padding: 6px 10px; border-radius: 8px; font-size: 13px;
+      cursor: pointer; display: flex; align-items: center; gap: 4px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #toolbar .btn:active { background: #1a5276; }
+    #toolbar .btn.active { background: #e94560; }
+    #toolbar-left, #toolbar-right { display: flex; gap: 6px; align-items: center; }
+    #toolbar-center { display: flex; align-items: center; gap: 8px; }
+    #fps-counter { color: #7f8c8d; font-size: 11px; font-variant-numeric: tabular-nums; min-width: 55px; }
+    #brush-size-display { color: #bdc3c7; font-size: 12px; min-width: 30px; text-align: center; }
+
+    #canvas-container {
+      flex: 1; position: relative; overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      background: #0a0a1a;
+    }
+    #simCanvas { image-rendering: pixelated; image-rendering: crisp-edges; }
+
+    #element-panel {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      padding: 6px 6px; padding-bottom: max(6px, env(safe-area-inset-bottom));
+      background: linear-gradient(to top, rgba(22,33,62,0.98), rgba(22,33,62,0.92));
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      border-top: 1px solid #0f3460;
+      z-index: 10; transition: transform 0.3s ease;
+    }
+    #element-panel.collapsed { transform: translateY(calc(100% - 36px)); }
+    #panel-toggle {
+      display: flex; justify-content: center; padding: 4px 0 2px;
+      cursor: pointer;
+    }
+    #panel-toggle .handle { width: 36px; height: 4px; background: #4a4a6a; border-radius: 2px; }
+
+    #category-tabs {
+      display: flex; gap: 4px; overflow-x: auto; padding: 2px 0 6px;
+      scrollbar-width: none; -ms-overflow-style: none;
+    }
+    #category-tabs::-webkit-scrollbar { display: none; }
+    .cat-tab {
+      background: #0f3460; border: none; color: #8899aa;
+      padding: 4px 10px; border-radius: 12px; font-size: 11px;
+      white-space: nowrap; cursor: pointer; flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .cat-tab.active { background: #e94560; color: white; }
+
+    #element-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+      gap: 4px; max-height: 140px; overflow-y: auto;
+      scrollbar-width: none; -ms-overflow-style: none;
+    }
+    #element-grid::-webkit-scrollbar { display: none; }
+    .elem-btn {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 6px 2px; border-radius: 8px; border: 2px solid transparent;
+      background: #1a1a3e; cursor: pointer; gap: 2px;
+      -webkit-tap-highlight-color: transparent;
+      transition: border-color 0.15s;
+    }
+    .elem-btn.selected { border-color: #e94560; background: #2a1a3e; }
+    .elem-btn .swatch {
+      width: 24px; height: 24px; border-radius: 4px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .elem-btn .label { font-size: 9px; color: #8899aa; text-align: center; line-height: 1.1; }
+    .elem-btn.selected .label { color: #e0e0e0; }
+
+    #brush-slider-container {
+      position: fixed; left: 50%; transform: translateX(-50%);
+      bottom: 200px; background: rgba(22,33,62,0.95);
+      padding: 10px 16px; border-radius: 12px;
+      border: 1px solid #0f3460; display: none; z-index: 20;
+      backdrop-filter: blur(10px);
+    }
+    #brush-slider-container.visible { display: flex; align-items: center; gap: 10px; }
+    #brush-slider { -webkit-appearance: none; width: 160px; height: 4px; background: #0f3460; border-radius: 2px; outline: none; }
+    #brush-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; background: #e94560; border-radius: 50%; }
+    #brush-label { color: #bdc3c7; font-size: 13px; min-width: 30px; text-align: center; }
+
+    #info-overlay {
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: rgba(22,33,62,0.97); padding: 24px; border-radius: 16px;
+      border: 1px solid #0f3460; max-width: 320px; width: 90%;
+      z-index: 100; display: none; color: #ccc; font-size: 13px; line-height: 1.5;
+    }
+    #info-overlay h2 { color: #e94560; margin-bottom: 12px; font-size: 18px; }
+    #info-overlay .close-btn {
+      position: absolute; top: 12px; right: 12px; background: none;
+      border: none; color: #888; font-size: 20px; cursor: pointer;
+    }
+    #info-overlay ul { padding-left: 18px; margin: 8px 0; }
+    #info-overlay.visible { display: block; }
+    #overlay-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; display: none; }
+    #overlay-bg.visible { display: block; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="toolbar">
+      <div id="toolbar-left">
+        <button class="btn" id="btn-play" title="Pause/Play">▶</button>
+        <button class="btn" id="btn-clear" title="Clear">✕</button>
+        <button class="btn" id="btn-undo" title="Undo">↩</button>
+      </div>
+      <div id="toolbar-center">
+        <span id="fps-counter">60 fps</span>
+        <button class="btn" id="btn-brush" title="Brush Size">
+          <span id="brush-size-display">3</span>
+        </button>
+      </div>
+      <div id="toolbar-right">
+        <button class="btn" id="btn-gravity" title="Gravity">G</button>
+        <button class="btn" id="btn-info" title="Info">?</button>
+      </div>
+    </div>
+    <div id="canvas-container">
+      <canvas id="simCanvas"></canvas>
+    </div>
+    <div id="element-panel">
+      <div id="panel-toggle"><div class="handle"></div></div>
+      <div id="category-tabs"></div>
+      <div id="element-grid"></div>
+    </div>
+  </div>
+
+  <div id="brush-slider-container">
+    <input type="range" id="brush-slider" min="1" max="20" value="3">
+    <span id="brush-label">3</span>
+  </div>
+
+  <div id="overlay-bg"></div>
+  <div id="info-overlay">
+    <button class="close-btn" id="info-close">✕</button>
+    <h2>SimulatedSand</h2>
+    <p>A physics-based particle simulator.</p>
+    <ul>
+      <li><b>Draw</b> — Touch and drag to place elements</li>
+      <li><b>Pinch</b> — Zoom in/out</li>
+      <li><b>Two-finger drag</b> — Pan the view</li>
+      <li><b>Brush</b> — Tap size button to adjust</li>
+    </ul>
+    <p style="margin-top:8px; color:#888; font-size:11px;">
+      30+ elements with realistic physics, temperature, chemical reactions, and state changes.
+    </p>
+  </div>
+
+  <script src="/sim/constants.js"></script>
+  <script src="/sim/elements.js"></script>
+  <script src="/sim/grid.js"></script>
+  <script src="/sim/physics.js"></script>
+  <script src="/sim/renderer.js"></script>
+  <script src="/sim/input.js"></script>
+  <script src="/sim/ui.js"></script>
+  <script src="/sim/main.js"></script>
+</body>
+</html>
