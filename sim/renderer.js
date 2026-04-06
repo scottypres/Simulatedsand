@@ -105,5 +105,42 @@ class Renderer {
     }
 
     this.ctx.putImageData(this.imageData, 0, 0);
+
+    // Draw source markers on top
+    if (g.sources.size > 0) {
+      this.renderSources();
+    }
+  }
+
+  renderSources() {
+    const g = this.grid;
+    const pixels = this.pixels;
+    const w = g.width;
+    // Pulsing brightness
+    const pulse = Math.sin(performance.now() * 0.006) * 0.3 + 0.7;
+
+    for (const [key, elemId] of g.sources) {
+      const parts = key.split(",");
+      const sx = parseInt(parts[0]), sy = parseInt(parts[1]);
+      const i = sy * w + sx;
+
+      // Get element color and brighten it with a white pulsing border
+      const el = ELEMENTS[elemId];
+      if (!el) continue;
+      const c = el.colors[0];
+      const bright = pulse;
+
+      // Blend a white diamond marker over the pixel
+      const r = Math.min(255, (c[0] * 0.5 + 255 * 0.5 * bright) | 0);
+      const gv = Math.min(255, (c[1] * 0.5 + 255 * 0.5 * bright) | 0);
+      const b = Math.min(255, (c[2] * 0.5 + 255 * 0.5 * bright) | 0);
+      pixels[i] = (255 << 24) | (b << 16) | (gv << 8) | r;
+
+      // Mark dirty so it redraws each frame while sources exist
+      g.markDirty(sx, sy);
+    }
+
+    // Re-push the modified pixels
+    this.ctx.putImageData(this.imageData, 0, 0);
   }
 }

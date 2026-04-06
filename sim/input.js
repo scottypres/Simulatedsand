@@ -13,6 +13,7 @@ class InputManager {
     this.lastY = -1;
     this.brushSize = 3;
     this.selectedElement = E.SAND;
+    this.sourceMode = false;
 
     // For pinch-to-zoom and two-finger pan
     this.touches = new Map();
@@ -177,6 +178,11 @@ class InputManager {
     const r = this.brushSize;
     const elem = this.selectedElement;
 
+    if (this.sourceMode) {
+      this.placeSource(cx, cy, r, elem);
+      return;
+    }
+
     for (let dy = -r; dy <= r; dy++) {
       for (let dx = -r; dx <= r; dx++) {
         if (dx * dx + dy * dy > r * r) continue;
@@ -193,6 +199,8 @@ class InputManager {
             g.lifetime[i] = -1;
             g.markDirty(x, y); g.markActive(x, y);
           }
+          // Also remove sources in this area
+          g.removeSourcesInRadius(cx, cy, r);
         } else {
           const i = g.idx(x, y);
           // Only place in empty cells (or replace for special tools)
@@ -204,6 +212,25 @@ class InputManager {
             g.set(x, y, elem);
           }
         }
+      }
+    }
+  }
+
+  placeSource(cx, cy, r, elem) {
+    const g = this.grid;
+
+    if (elem === E.EMPTY) {
+      // Erase sources in radius
+      g.removeSourcesInRadius(cx, cy, r);
+      return;
+    }
+
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if (dx * dx + dy * dy > r * r) continue;
+        const x = cx + dx, y = cy + dy;
+        if (!g.inBounds(x, y)) continue;
+        g.addSource(x, y, elem);
       }
     }
   }

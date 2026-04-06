@@ -39,6 +39,9 @@ class PhysicsEngine {
       }
     }
 
+    // Spawn from sources
+    this.processSources();
+
     // Temperature diffusion pass (simplified)
     this.diffuseTemperature();
   }
@@ -178,6 +181,46 @@ class PhysicsEngine {
             // Ambient cooling
             g.temp[i] += (AMBIENT_TEMP - g.temp[i]) * 0.002;
           }
+        }
+      }
+    }
+  }
+
+  processSources() {
+    const g = this.grid;
+    const w = g.width, h = g.height;
+
+    for (const [key, elemId] of g.sources) {
+      const parts = key.split(",");
+      const sx = parseInt(parts[0]), sy = parseInt(parts[1]);
+      const i = sy * w + sx;
+
+      // Keep the source chunk active so it always spawns
+      g.markActive(sx, sy);
+
+      // If the source cell itself is empty, fill it directly
+      if (g.type[i] === E.EMPTY) {
+        g.set(sx, sy, elemId);
+        continue;
+      }
+
+      // Otherwise try to spawn into an adjacent empty cell
+      // Prefer downward for solids/liquids, upward for gases
+      const el = ELEMENTS[elemId];
+      let dirs;
+      if (el && (el.state === STATE.GAS || el.state === STATE.PLASMA)) {
+        dirs = [[0,-1],[-1,-1],[1,-1],[-1,0],[1,0],[0,1]];
+      } else {
+        dirs = [[0,1],[-1,1],[1,1],[-1,0],[1,0],[0,-1]];
+      }
+
+      for (const [dx, dy] of dirs) {
+        const nx = sx + dx, ny = sy + dy;
+        if (!g.inBounds(nx, ny)) continue;
+        const ni = ny * w + nx;
+        if (g.type[ni] === E.EMPTY) {
+          g.set(nx, ny, elemId);
+          break;
         }
       }
     }

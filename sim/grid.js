@@ -24,6 +24,9 @@ class SimGrid {
     this.activeChunks = new Uint8Array(this.chunksX * this.chunksY);
     this.nextActiveChunks = new Uint8Array(this.chunksX * this.chunksY);
 
+    // Source spawners: Map of "x,y" -> elementId
+    this.sources = new Map();
+
     // Undo snapshots
     this.undoStack = [];
     this.maxUndo = 5;
@@ -46,6 +49,34 @@ class SimGrid {
     this.dirtyChunks.fill(1);
     this.activeChunks.fill(1);
     this.nextActiveChunks.fill(0);
+    this.sources.clear();
+  }
+
+  addSource(x, y, elemId) {
+    const key = x + "," + y;
+    this.sources.set(key, elemId);
+    this.markDirty(x, y);
+    this.markActive(x, y);
+  }
+
+  removeSource(x, y) {
+    const key = x + "," + y;
+    this.sources.delete(key);
+    this.markDirty(x, y);
+  }
+
+  removeSourcesInRadius(cx, cy, r) {
+    const keysToRemove = [];
+    for (const [key, _] of this.sources) {
+      const parts = key.split(",");
+      const sx = parseInt(parts[0]), sy = parseInt(parts[1]);
+      const dx = sx - cx, dy = sy - cy;
+      if (dx * dx + dy * dy <= r * r) {
+        keysToRemove.push(key);
+        this.markDirty(sx, sy);
+      }
+    }
+    for (const k of keysToRemove) this.sources.delete(k);
   }
 
   idx(x, y) {
@@ -121,6 +152,7 @@ class SimGrid {
       temp: new Float32Array(this.temp),
       lifetime: new Int16Array(this.lifetime),
       extra: new Int16Array(this.extra),
+      sources: new Map(this.sources),
     });
   }
 
@@ -134,6 +166,7 @@ class SimGrid {
     this.temp.set(snap.temp);
     this.lifetime.set(snap.lifetime);
     this.extra.set(snap.extra);
+    this.sources = new Map(snap.sources);
     this.dirtyChunks.fill(1);
     this.activeChunks.fill(1);
     return true;

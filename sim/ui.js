@@ -91,8 +91,15 @@ class UIController {
     const btnPlay = document.getElementById("btn-play");
     const btnClear = document.getElementById("btn-clear");
     const btnUndo = document.getElementById("btn-undo");
+    const btnSource = document.getElementById("btn-source");
     const btnGravity = document.getElementById("btn-gravity");
     const btnInfo = document.getElementById("btn-info");
+
+    btnSource.addEventListener("click", () => {
+      this.input.sourceMode = !this.input.sourceMode;
+      btnSource.classList.toggle("active", this.input.sourceMode);
+      if (navigator.vibrate) navigator.vibrate(this.input.sourceMode ? [15, 30, 15] : 10);
+    });
 
     btnPlay.addEventListener("click", () => {
       this.paused = !this.paused;
