@@ -190,6 +190,7 @@ class UIController {
   }
 
   setupSettings() {
+    const self = this;
     const btnSettings = document.getElementById("btn-settings");
     const overlay = document.getElementById("settings-overlay");
     const bg = document.getElementById("overlay-bg");
@@ -198,6 +199,9 @@ class UIController {
     const gridLabel = document.getElementById("grid-size-label");
     const applyBtn = document.getElementById("btn-apply-settings");
     const closeBtn = document.getElementById("settings-close");
+    const speedSlider = document.getElementById("setting-speed");
+    const speedValue = document.getElementById("speed-value");
+    const openBottomBtn = document.getElementById("setting-open-bottom");
 
     const scaleNames = { 1: "Max", 2: "High", 3: "Medium", 4: "Low", 5: "Lowest" };
     let pendingScale = currentPixelScale;
@@ -209,14 +213,24 @@ class UIController {
       gridLabel.textContent = dims.width + " x " + dims.height + " = " + total.toLocaleString() + " particles";
     }
 
+    function syncOpenBottomBtn() {
+      const on = self.input.physics.openBottom;
+      openBottomBtn.textContent = on ? "ON" : "OFF";
+      openBottomBtn.classList.toggle("active", on);
+    }
+
     function openSettings() {
       pendingScale = currentPixelScale;
       scaleSlider.value = currentPixelScale;
       updatePreview(currentPixelScale);
-      // Highlight active preset
       document.querySelectorAll(".preset-btn").forEach(b => {
         b.classList.toggle("active", parseInt(b.dataset.scale) === currentPixelScale);
       });
+      // Sync speed
+      speedSlider.value = self.input.physics.simSpeed;
+      speedValue.textContent = self.input.physics.simSpeed + "x";
+      // Sync open bottom
+      syncOpenBottomBtn();
       overlay.classList.add("visible");
       bg.classList.add("visible");
     }
@@ -229,7 +243,7 @@ class UIController {
     btnSettings.addEventListener("click", openSettings);
     closeBtn.addEventListener("click", closeSettings);
 
-    // Slider updates preview
+    // Resolution slider
     scaleSlider.addEventListener("input", () => {
       pendingScale = parseInt(scaleSlider.value);
       updatePreview(pendingScale);
@@ -250,7 +264,22 @@ class UIController {
       });
     });
 
-    // Apply
+    // Speed slider — applies instantly
+    speedSlider.addEventListener("input", () => {
+      const v = parseInt(speedSlider.value);
+      self.input.physics.simSpeed = v;
+      speedValue.textContent = v + "x";
+      localStorage.setItem("simSpeed", v);
+    });
+
+    // Open bottom toggle — applies instantly
+    openBottomBtn.addEventListener("click", () => {
+      self.input.physics.openBottom = !self.input.physics.openBottom;
+      localStorage.setItem("simOpenBottom", self.input.physics.openBottom);
+      syncOpenBottomBtn();
+    });
+
+    // Apply (resolution only — needs restart)
     applyBtn.addEventListener("click", () => {
       if (window.rebuildSim) {
         window.rebuildSim(pendingScale);

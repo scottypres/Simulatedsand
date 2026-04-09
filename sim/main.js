@@ -102,8 +102,11 @@
     requestAnimationFrame(loop);
 
     if (!ui.paused) {
-      physics.update();
-      runInteractions();
+      const steps = physics.simSpeed || 1;
+      for (let s = 0; s < steps; s++) {
+        physics.update();
+        runInteractions();
+      }
     }
 
     renderer.render();

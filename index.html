@@ -257,8 +257,27 @@
         <button class="btn preset-btn" data-scale="1">Max</button>
       </div>
     </div>
+    <div class="setting-row">
+      <div class="setting-label">
+        Sim Speed
+        <small>Physics steps per frame</small>
+      </div>
+      <div class="setting-control">
+        <input type="range" id="setting-speed" min="1" max="5" step="1" value="1">
+        <span class="setting-value" id="speed-value">1x</span>
+      </div>
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">
+        Open Bottom
+        <small>Particles fall off the edge</small>
+      </div>
+      <div class="setting-control">
+        <button class="btn" id="setting-open-bottom">OFF</button>
+      </div>
+    </div>
     <button id="btn-apply-settings">Apply &amp; Restart Sim</button>
-    <div class="settings-warning">Changing resolution clears the canvas</div>
+    <div class="settings-warning">Changing resolution clears the canvas. Speed and open bottom apply instantly.</div>
   </div>
   <div id="info-overlay">
     <button class="close-btn" id="info-close">✕</button>

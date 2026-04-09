@@ -5,6 +5,8 @@ class PhysicsEngine {
   constructor(grid) {
     this.grid = grid;
     this.gravityDir = 1; // 1 = down, -1 = up
+    this.openBottom = localStorage.getItem("simOpenBottom") === "true";
+    this.simSpeed = parseInt(localStorage.getItem("simSpeed")) || 1;
   }
 
   update() {
@@ -12,6 +14,11 @@ class PhysicsEngine {
     g.beginFrame();
     const w = g.width, h = g.height;
     const gDir = this.gravityDir;
+
+    // Open bottom: delete particles on the gravity-facing edge
+    if (this.openBottom) {
+      this.processOpenEdge(w, h, gDir);
+    }
 
     // Alternate scan direction to prevent bias
     const leftToRight = g.tick & 1;
@@ -223,6 +230,21 @@ class PhysicsEngine {
           break;
         }
       }
+    }
+  }
+
+  processOpenEdge(w, h, gDir) {
+    const g = this.grid;
+    const edgeY = gDir > 0 ? h - 1 : 0;
+    for (let x = 0; x < w; x++) {
+      const i = edgeY * w + x;
+      const t = g.type[i];
+      if (t === E.EMPTY || t === E.WALL || t === E.VOID || t === E.CLONE) continue;
+      const el = ELEMENTS[t];
+      if (!el) continue;
+      // Only remove movable particles (not static solids)
+      if (el.state === STATE.STATIC) continue;
+      this.removeParticle(x, edgeY, i);
     }
   }
 
