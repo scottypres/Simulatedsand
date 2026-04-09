@@ -24,12 +24,29 @@
 
   // Expose rebuild function for settings
   window.rebuildSim = function(newScale) {
+    const oldScale = currentPixelScale;
     currentPixelScale = newScale;
     localStorage.setItem("simScale", newScale);
     const dims = computeSimDimensions(newScale);
     SIM_WIDTH = dims.width;
     SIM_HEIGHT = dims.height;
     initSim();
+    // Scale brush size proportionally so it feels the same physical size
+    const ratio = oldScale / newScale;
+    const newBrush = Math.max(1, Math.round(input.brushSize * ratio));
+    input.brushSize = newBrush;
+    // Sync the brush UI
+    const brushDisplay = document.getElementById("brush-size-display");
+    const brushSlider = document.getElementById("brush-slider");
+    // Scale slider max so larger grids can use bigger brushes
+    const newMax = Math.max(20, Math.round(20 * ratio));
+    if (brushSlider) {
+      brushSlider.max = newMax;
+      brushSlider.value = newBrush;
+    }
+    if (brushDisplay) brushDisplay.textContent = newBrush;
+    const brushLabel = document.getElementById("brush-label");
+    if (brushLabel) brushLabel.textContent = newBrush;
     renderer.fitToContainer();
   };
 
