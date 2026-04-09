@@ -172,6 +172,78 @@ class SimGrid {
     return true;
   }
 
+  serialize() {
+    // Pack grid state into a compact object for saving
+    // We save: dimensions, type array, color arrays, temp, lifetime, extra, sources
+    const sources = [];
+    for (const [key, elemId] of this.sources) {
+      sources.push(key + ":" + elemId);
+    }
+    // Compress type array with RLE for smaller saves
+    const rle = [];
+    let run = this.type[0], count = 1;
+    for (let i = 1; i < this.size; i++) {
+      if (this.type[i] === run && count < 255) {
+        count++;
+      } else {
+        rle.push(run, count);
+        run = this.type[i];
+        count = 1;
+      }
+    }
+    rle.push(run, count);
+
+    return {
+      v: 1,
+      w: this.width,
+      h: this.height,
+      rle: rle,
+      colorR: Array.from(this.colorR),
+      colorG: Array.from(this.colorG),
+      colorB: Array.from(this.colorB),
+      temp: Array.from(this.temp),
+      lifetime: Array.from(this.lifetime),
+      extra: Array.from(this.extra),
+      sources: sources,
+    };
+  }
+
+  deserialize(data) {
+    if (!data || data.v !== 1) return false;
+    if (data.w !== this.width || data.h !== this.height) return false;
+
+    // Decompress RLE
+    let idx = 0;
+    for (let i = 0; i < data.rle.length; i += 2) {
+      const val = data.rle[i];
+      const cnt = data.rle[i + 1];
+      for (let j = 0; j < cnt && idx < this.size; j++) {
+        this.type[idx++] = val;
+      }
+    }
+
+    if (data.colorR) this.colorR.set(data.colorR);
+    if (data.colorG) this.colorG.set(data.colorG);
+    if (data.colorB) this.colorB.set(data.colorB);
+    if (data.temp) this.temp.set(data.temp);
+    if (data.lifetime) this.lifetime.set(new Int16Array(data.lifetime));
+    if (data.extra) this.extra.set(new Int16Array(data.extra));
+
+    this.sources.clear();
+    if (data.sources) {
+      for (const s of data.sources) {
+        const sep = s.lastIndexOf(":");
+        const key = s.substring(0, sep);
+        const elemId = parseInt(s.substring(sep + 1));
+        this.sources.set(key, elemId);
+      }
+    }
+
+    this.dirtyChunks.fill(1);
+    this.activeChunks.fill(1);
+    return true;
+  }
+
   beginFrame() {
     this.moved.fill(0);
     // Swap active chunk buffers

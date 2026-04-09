@@ -186,6 +186,43 @@
     .settings-warning {
       color: #e9a045; font-size: 11px; margin-top: 8px; text-align: center;
     }
+
+    #savelist-overlay {
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: rgba(22,33,62,0.98); padding: 20px; border-radius: 16px;
+      border: 1px solid #0f3460; max-width: 360px; width: 92%;
+      z-index: 100; display: none; color: #ccc; font-size: 13px;
+      max-height: 80vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    }
+    #savelist-overlay.visible { display: block; }
+    #savelist-overlay h2 { color: #e94560; margin: 0 0 12px; font-size: 17px; }
+    #savelist-overlay .close-btn {
+      position: absolute; top: 12px; right: 12px; background: none;
+      border: none; color: #888; font-size: 20px; cursor: pointer;
+    }
+    .save-actions { display: flex; gap: 6px; margin-bottom: 12px; }
+    .save-actions .btn { flex: 1; justify-content: center; padding: 8px; font-size: 12px; }
+    .slot-list { display: flex; flex-direction: column; gap: 6px; }
+    .slot-item {
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(15,52,96,0.4); border-radius: 10px; padding: 10px 12px;
+    }
+    .slot-info { flex: 1; min-width: 0; }
+    .slot-name { font-size: 13px; color: #e0e0e0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .slot-meta { font-size: 10px; color: #667; margin-top: 2px; }
+    .slot-actions { display: flex; gap: 4px; flex-shrink: 0; }
+    .slot-actions .btn { padding: 4px 8px; font-size: 11px; }
+    .slot-actions .btn-del { background: #5a1a1a; }
+    .slot-actions .btn-del:active { background: #8a2a2a; }
+    .slot-empty { text-align: center; color: #556; padding: 20px 0; font-size: 12px; }
+    #save-name-input {
+      background: #0f3460; border: 1px solid #1a5276; color: #e0e0e0;
+      padding: 8px 10px; border-radius: 8px; font-size: 13px; width: 100%;
+      margin-bottom: 10px; outline: none;
+    }
+    #save-name-input:focus { border-color: #e94560; }
+    #save-name-input::placeholder { color: #556; }
+    .file-input-hidden { position: absolute; width: 0; height: 0; opacity: 0; overflow: hidden; }
   </style>
 </head>
 <body>
@@ -204,6 +241,7 @@
       </div>
       <div id="toolbar-right">
         <button class="btn" id="btn-source" title="Source Mode">S</button>
+        <button class="btn" id="btn-saves" title="Save/Load">&#9776;</button>
         <button class="btn" id="btn-gravity" title="Gravity">G</button>
         <button class="btn" id="btn-settings" title="Settings">&#9881;</button>
         <button class="btn" id="btn-info" title="Info">?</button>
@@ -278,6 +316,18 @@
     </div>
     <button id="btn-apply-settings">Apply &amp; Restart Sim</button>
     <div class="settings-warning">Changing resolution clears the canvas. Speed and open bottom apply instantly.</div>
+  </div>
+  <div id="savelist-overlay">
+    <button class="close-btn" id="savelist-close">&#10005;</button>
+    <h2>Save / Load</h2>
+    <input type="text" id="save-name-input" placeholder="Save name..." maxlength="40">
+    <div class="save-actions">
+      <button class="btn" id="btn-save-new">Save Current</button>
+      <button class="btn" id="btn-export-file">Export File</button>
+      <button class="btn" id="btn-import-file">Import File</button>
+    </div>
+    <input type="file" id="file-import-input" class="file-input-hidden" accept=".sand,.json">
+    <div class="slot-list" id="slot-list"></div>
   </div>
   <div id="info-overlay">
     <button class="close-btn" id="info-close">✕</button>

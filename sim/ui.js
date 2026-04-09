@@ -15,6 +15,7 @@ class UIController {
     this.setupPanel();
     this.setupBrushSlider();
     this.setupSettings();
+    this.setupSaveLoad();
 
     // Select sand by default
     this.selectElement(E.SAND);
@@ -138,6 +139,7 @@ class UIController {
     document.getElementById("overlay-bg").addEventListener("click", () => {
       document.getElementById("info-overlay").classList.remove("visible");
       document.getElementById("settings-overlay").classList.remove("visible");
+      document.getElementById("savelist-overlay").classList.remove("visible");
       document.getElementById("overlay-bg").classList.remove("visible");
     });
   }
@@ -285,6 +287,210 @@ class UIController {
         window.rebuildSim(pendingScale);
       }
       closeSettings();
+    });
+  }
+
+  setupSaveLoad() {
+    const self = this;
+    const STORAGE_KEY = "simSand_saves";
+    const btnSaves = document.getElementById("btn-saves");
+    const overlay = document.getElementById("savelist-overlay");
+    const bg = document.getElementById("overlay-bg");
+    const closeBtn = document.getElementById("savelist-close");
+    const nameInput = document.getElementById("save-name-input");
+    const btnSaveNew = document.getElementById("btn-save-new");
+    const btnExport = document.getElementById("btn-export-file");
+    const btnImport = document.getElementById("btn-import-file");
+    const fileInput = document.getElementById("file-import-input");
+    const slotList = document.getElementById("slot-list");
+
+    function getSaves() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+      } catch(e) { return []; }
+    }
+
+    function putSaves(saves) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(saves));
+    }
+
+    function formatDate(ts) {
+      const d = new Date(ts);
+      const pad = n => String(n).padStart(2, "0");
+      return d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate())
+        + " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
+    }
+
+    function renderSlots() {
+      const saves = getSaves();
+      slotList.innerHTML = "";
+      if (saves.length === 0) {
+        slotList.innerHTML = '<div class="slot-empty">No saved maps yet</div>';
+        return;
+      }
+      // Show newest first
+      for (let si = saves.length - 1; si >= 0; si--) {
+        const save = saves[si];
+        const item = document.createElement("div");
+        item.className = "slot-item";
+
+        const info = document.createElement("div");
+        info.className = "slot-info";
+        const name = document.createElement("div");
+        name.className = "slot-name";
+        name.textContent = save.name || "Untitled";
+        const meta = document.createElement("div");
+        meta.className = "slot-meta";
+        meta.textContent = save.w + "x" + save.h + " \u2022 " + formatDate(save.ts);
+        info.appendChild(name);
+        info.appendChild(meta);
+
+        const actions = document.createElement("div");
+        actions.className = "slot-actions";
+
+        const loadBtn = document.createElement("button");
+        loadBtn.className = "btn";
+        loadBtn.textContent = "Load";
+        loadBtn.addEventListener("click", () => loadSlot(si));
+
+        const overwriteBtn = document.createElement("button");
+        overwriteBtn.className = "btn";
+        overwriteBtn.textContent = "Save";
+        overwriteBtn.addEventListener("click", () => overwriteSlot(si));
+
+        const delBtn = document.createElement("button");
+        delBtn.className = "btn btn-del";
+        delBtn.textContent = "Del";
+        delBtn.addEventListener("click", () => deleteSlot(si));
+
+        actions.appendChild(loadBtn);
+        actions.appendChild(overwriteBtn);
+        actions.appendChild(delBtn);
+
+        item.appendChild(info);
+        item.appendChild(actions);
+        slotList.appendChild(item);
+      }
+    }
+
+    function saveNew() {
+      const grid = self.input.grid;
+      const data = grid.serialize();
+      const name = nameInput.value.trim() || ("Save " + (getSaves().length + 1));
+      const saves = getSaves();
+      saves.push({ name: name, ts: Date.now(), w: grid.width, h: grid.height, data: data });
+      putSaves(saves);
+      nameInput.value = "";
+      renderSlots();
+    }
+
+    function overwriteSlot(idx) {
+      const grid = self.input.grid;
+      const data = grid.serialize();
+      const saves = getSaves();
+      if (!saves[idx]) return;
+      saves[idx].data = data;
+      saves[idx].ts = Date.now();
+      saves[idx].w = grid.width;
+      saves[idx].h = grid.height;
+      putSaves(saves);
+      renderSlots();
+    }
+
+    function loadSlot(idx) {
+      const saves = getSaves();
+      if (!saves[idx]) return;
+      const data = saves[idx].data;
+      const grid = self.input.grid;
+      // Check if dimensions match; if not, rebuild
+      if (data.w !== grid.width || data.h !== grid.height) {
+        // Find scale that produces these dimensions, or rebuild to match
+        SIM_WIDTH = data.w;
+        SIM_HEIGHT = data.h;
+        if (window.rebuildSim) {
+          // Rebuild at current scale, then override dimensions
+          window.rebuildSim(currentPixelScale);
+        }
+        // Dimensions may not match after rebuild, try direct deserialize
+        const newGrid = self.input.grid;
+        if (data.w !== newGrid.width || data.h !== newGrid.height) {
+          alert("Map size (" + data.w + "x" + data.h + ") doesn't match current grid (" + newGrid.width + "x" + newGrid.height + "). Change resolution to match.");
+          return;
+        }
+      }
+      self.input.grid.saveUndo();
+      self.input.grid.deserialize(data);
+      closeOverlay();
+    }
+
+    function deleteSlot(idx) {
+      const saves = getSaves();
+      saves.splice(idx, 1);
+      putSaves(saves);
+      renderSlots();
+    }
+
+    function exportFile() {
+      const grid = self.input.grid;
+      const data = grid.serialize();
+      const name = nameInput.value.trim() || "sandbox";
+      const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = name + ".sand";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function importFile(file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (!data || data.v !== 1) {
+            alert("Invalid save file.");
+            return;
+          }
+          const grid = self.input.grid;
+          if (data.w !== grid.width || data.h !== grid.height) {
+            alert("Map size (" + data.w + "x" + data.h + ") doesn't match current grid (" + grid.width + "x" + grid.height + "). Change resolution to match, then import again.");
+            return;
+          }
+          grid.saveUndo();
+          grid.deserialize(data);
+          closeOverlay();
+        } catch(err) {
+          alert("Failed to load file: " + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function openOverlay() {
+      renderSlots();
+      nameInput.value = "";
+      overlay.classList.add("visible");
+      bg.classList.add("visible");
+    }
+
+    function closeOverlay() {
+      overlay.classList.remove("visible");
+      bg.classList.remove("visible");
+    }
+
+    btnSaves.addEventListener("click", openOverlay);
+    closeBtn.addEventListener("click", closeOverlay);
+    btnSaveNew.addEventListener("click", saveNew);
+    btnExport.addEventListener("click", exportFile);
+    btnImport.addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", () => {
+      if (fileInput.files.length > 0) {
+        importFile(fileInput.files[0]);
+        fileInput.value = "";
+      }
     });
   }
 }
