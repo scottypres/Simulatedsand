@@ -111,18 +111,37 @@
     #brush-label { color: #bdc3c7; font-size: 13px; min-width: 30px; text-align: center; }
 
     #info-overlay {
-      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      background: rgba(22,33,62,0.97); padding: 24px; border-radius: 16px;
-      border: 1px solid #0f3460; max-width: 320px; width: 90%;
-      z-index: 100; display: none; color: #ccc; font-size: 13px; line-height: 1.5;
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(22,33,62,0.98); border: none; border-radius: 0;
+      z-index: 100; display: none; color: #ccc; font-size: 13px; line-height: 1.6;
+      overflow-y: auto; -webkit-overflow-scrolling: touch;
+      padding: 0;
     }
-    #info-overlay h2 { color: #e94560; margin-bottom: 12px; font-size: 18px; }
-    #info-overlay .close-btn {
-      position: absolute; top: 12px; right: 12px; background: none;
-      border: none; color: #888; font-size: 20px; cursor: pointer;
-    }
-    #info-overlay ul { padding-left: 18px; margin: 8px 0; }
     #info-overlay.visible { display: block; }
+    #info-inner {
+      max-width: 420px; margin: 0 auto;
+      padding: 20px 20px; padding-top: max(20px, env(safe-area-inset-top));
+      padding-bottom: max(40px, env(safe-area-inset-bottom));
+    }
+    #info-overlay h2 { color: #e94560; margin: 20px 0 8px; font-size: 17px; }
+    #info-overlay h2:first-child { margin-top: 0; }
+    #info-overlay h3 { color: #4fc3f7; margin: 14px 0 6px; font-size: 14px; }
+    #info-overlay .close-btn {
+      position: fixed; top: max(12px, env(safe-area-inset-top)); right: 16px;
+      background: rgba(15,52,96,0.9); border: 1px solid #0f3460;
+      color: #ccc; font-size: 16px; cursor: pointer; z-index: 101;
+      width: 36px; height: 36px; border-radius: 18px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #info-overlay ul { padding-left: 18px; margin: 6px 0; }
+    #info-overlay li { margin: 4px 0; }
+    #info-overlay .key { display: inline-block; background: #0f3460; padding: 1px 7px; border-radius: 4px; font-size: 11px; font-family: monospace; color: #e0e0e0; }
+    #info-overlay .elem-row { display: flex; align-items: center; gap: 8px; margin: 3px 0; }
+    #info-overlay .dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+    #info-overlay .section { background: rgba(15,52,96,0.4); border-radius: 10px; padding: 12px 14px; margin: 10px 0; }
+    #info-overlay table { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 12px; }
+    #info-overlay th { text-align: left; color: #4fc3f7; padding: 4px 6px; border-bottom: 1px solid #0f3460; }
+    #info-overlay td { padding: 3px 6px; border-bottom: 1px solid rgba(15,52,96,0.4); }
     #overlay-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; display: none; }
     #overlay-bg.visible { display: block; }
   </style>
@@ -166,18 +185,186 @@
   <div id="overlay-bg"></div>
   <div id="info-overlay">
     <button class="close-btn" id="info-close">✕</button>
+    <div id="info-inner">
+
     <h2>SimulatedSand</h2>
-    <p>A physics-based particle simulator.</p>
-    <ul>
-      <li><b>Draw</b> — Touch and drag to place elements</li>
-      <li><b>Pinch</b> — Zoom in/out</li>
-      <li><b>Two-finger drag</b> — Pan the view</li>
-      <li><b>Brush</b> — Tap size button to adjust</li>
-      <li><b>Source (S)</b> — Toggle source mode to place permanent spawners that endlessly produce any element</li>
-    </ul>
-    <p style="margin-top:8px; color:#888; font-size:11px;">
-      30+ elements with realistic physics, temperature, chemical reactions, and state changes.
+    <p>A physics-based falling sand simulator with 40+ elements, temperature physics, chemical reactions, and explosions.</p>
+
+    <h2>Controls</h2>
+    <div class="section">
+      <h3>Touch / Mouse</h3>
+      <ul>
+        <li><b>Tap &amp; drag</b> — Draw selected element</li>
+        <li><b>Hold in place</b> — Continuously pour element</li>
+        <li><b>Pinch</b> — Zoom in/out</li>
+        <li><b>Two-finger drag</b> — Pan the view</li>
+      </ul>
+      <h3>Keyboard Shortcuts</h3>
+      <table>
+        <tr><td><span class="key">Space</span></td><td>Pause / Resume</td></tr>
+        <tr><td><span class="key">S</span></td><td>Toggle Source mode</td></tr>
+        <tr><td><span class="key">G</span></td><td>Flip gravity</td></tr>
+        <tr><td><span class="key">C</span></td><td>Clear canvas</td></tr>
+        <tr><td><span class="key">Ctrl+Z</span></td><td>Undo</td></tr>
+      </table>
+    </div>
+
+    <h2>Toolbar</h2>
+    <div class="section">
+      <ul>
+        <li><b>⏸ / ▶</b> — Pause or resume the simulation</li>
+        <li><b>✕</b> — Clear the entire canvas</li>
+        <li><b>↩</b> — Undo (up to 5 snapshots)</li>
+        <li><b>Brush size</b> — Tap the number to show a slider (1–20)</li>
+        <li><b>S</b> — Source mode (see below)</li>
+        <li><b>G</b> — Flip gravity direction</li>
+      </ul>
+    </div>
+
+    <h2>Source Mode</h2>
+    <div class="section">
+      <p>Tap <b>S</b> to enter Source mode (canvas glows red, banner appears). While active:</p>
+      <ul>
+        <li>Drawing places <b>permanent spawners</b> that endlessly produce the selected element</li>
+        <li>Sources appear as bright pulsing markers on the grid</li>
+        <li>Solids/liquids spawn downward, gases spawn upward</li>
+        <li>Select <b>Erase</b> and paint over sources to remove them</li>
+        <li>Works with every element — create sand faucets, lava falls, rain, gas vents, etc.</li>
+      </ul>
+      <p>Tap <b>S</b> again to return to normal drawing mode.</p>
+    </div>
+
+    <h2>Elements</h2>
+
+    <h3>Basic</h3>
+    <div class="section">
+      <div class="elem-row"><span class="dot" style="background:rgb(218,194,130)"></span> <b>Sand</b> — Falls and piles. Melts into Glass at extreme heat. Lightning turns it to Glass.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(120,120,130)"></span> <b>Stone</b> — Immovable solid. Melts into Lava at 1200°.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(255,100,20)"></span> <b>Fire</b> — Burns flammable materials, produces Smoke, extinguished by Water.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(160,210,240)"></span> <b>Ice</b> — Solid. Melts into Water above 5°.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(235,240,250)"></span> <b>Snow</b> — Powder that melts into Water.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(230,230,235)"></span> <b>Salt</b> — Powder. Dissolves in Water to create Saltwater.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(90,90,95)"></span> <b>Ash</b> — Lightweight powder left behind by fire.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(200,80,20)"></span> <b>Ember</b> — Hot falling particle that ignites flammable neighbors.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(170,160,140)"></span> <b>Dust</b> — Light flammable powder. Can cause dust explosions.</div>
+    </div>
+
+    <h3>Liquids</h3>
+    <div class="section">
+      <div class="elem-row"><span class="dot" style="background:rgb(30,100,200)"></span> <b>Water</b> — Flows sideways. Freezes to Ice below 0°. Boils to Steam at 100°. Grows Plants.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(220,60,20)"></span> <b>Lava</b> — Extremely hot liquid. Solidifies into Stone when cooled. Contact with Water creates Steam + Stone.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(50,30,10)"></span> <b>Oil</b> — Flammable liquid. Lighter than Water (floats). Burns into Smoke.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(100,220,40)"></span> <b>Acid</b> — Dissolves most materials. Resistance varies by element. Diamond is immune.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(30,90,170)"></span> <b>Saltwater</b> — Slightly denser than Water. Freezes at -5°.</div>
+    </div>
+
+    <h3>Gas</h3>
+    <div class="section">
+      <div class="elem-row"><span class="dot" style="background:rgb(60,60,70)"></span> <b>Smoke</b> — Rises and dissipates over time.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(180,200,220)"></span> <b>Steam</b> — Hot gas. Condenses back to Water when cooled.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(100,140,100)"></span> <b>Methane</b> — Flammable gas. Explodes when ignited.</div>
+    </div>
+
+    <h3>Explosives</h3>
+    <div class="section">
+      <div class="elem-row"><span class="dot" style="background:rgb(50,50,50)"></span> <b>Gunpowder</b> — Flammable powder with small blast radius.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(200,40,30)"></span> <b>TNT</b> — Powerful explosive. Chain-reacts with nearby explosives.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(200,100,20)"></span> <b>Napalm</b> — Sticky flammable liquid. Burns intensely.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(180,180,60)"></span> <b>Nitro</b> — Most powerful explosive. Massive blast radius.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(140,100,60)"></span> <b>Fuse</b> — Burns slowly along a line. Use to create detonation chains.</div>
+    </div>
+
+    <h3>Nature</h3>
+    <div class="section">
+      <div class="elem-row"><span class="dot" style="background:rgb(120,80,40)"></span> <b>Wood</b> — Flammable solid. Burns to Charcoal.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(30,140,40)"></span> <b>Plant</b> — Grows when touching Water. Flammable. Burns to Ash.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(80,60,20)"></span> <b>Seed</b> — Falls like powder. Grows into Plant when it lands on a surface.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(80,55,30)"></span> <b>Mud</b> — Created when Water mixes with Sand.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(35,30,25)"></span> <b>Charcoal</b> — Flammable powder. Burns to Ash.</div>
+    </div>
+
+    <h3>Materials</h3>
+    <div class="section">
+      <div class="elem-row"><span class="dot" style="background:rgb(160,165,175)"></span> <b>Metal</b> — Strong conductor. Slowly rusts with Water. Melts at 1500°.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(160,80,30)"></span> <b>Rust</b> — Weak powder created when Metal contacts Water.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(170,110,70)"></span> <b>Clay</b> — Powder. Melts into Lava at extreme heat.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(200,220,230)"></span> <b>Glass</b> — Transparent solid. Created by melting Sand or lightning strike.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(180,230,255)"></span> <b>Diamond</b> — Indestructible. Immune to Acid. Highest hardness.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(240,220,180)"></span> <b>Wax</b> — Melts into Oil at 60°. Flammable.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(145,145,140)"></span> <b>Cement</b> — Powder that hardens into Concrete when touching Water.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(155,155,150)"></span> <b>Concrete</b> — Strong immovable solid. Created from Cement + Water.</div>
+    </div>
+
+    <h3>Special</h3>
+    <div class="section">
+      <div class="elem-row"><span class="dot" style="background:rgb(180,30,180)"></span> <b>Virus</b> — Infects and converts adjacent particles. Eventually dies.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(255,220,50)"></span> <b>Clone</b> — Copies the first element it touches, then endlessly produces it.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(10,0,20)"></span> <b>Void</b> — Destroys all adjacent particles.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(200,200,255)"></span> <b>Lightning</b> — Electric bolt. Superheats area, turns Sand to Glass, ignites explosives.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(180,100,255)"></span> <b>Plasma</b> — Superheated gas. Heats everything nearby.</div>
+    </div>
+
+    <h3>Tools</h3>
+    <div class="section">
+      <div class="elem-row"><span class="dot" style="background:rgb(26,26,46)"></span> <b>Erase</b> — Remove particles (and sources in Source mode).</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(80,80,90)"></span> <b>Wall</b> — Indestructible barrier. Immune to everything.</div>
+    </div>
+
+    <h2>Reactions</h2>
+    <div class="section">
+      <table>
+        <tr><th>Input</th><th>Result</th></tr>
+        <tr><td>Water + Lava</td><td>Stone + Steam</td></tr>
+        <tr><td>Water + Salt</td><td>Saltwater</td></tr>
+        <tr><td>Water + Sand</td><td>Mud (slowly)</td></tr>
+        <tr><td>Water + Cement</td><td>Concrete</td></tr>
+        <tr><td>Water + Metal</td><td>Rust (very slowly)</td></tr>
+        <tr><td>Water + Plant</td><td>Plant grows</td></tr>
+        <tr><td>Fire + Water</td><td>Steam</td></tr>
+        <tr><td>Fire + Oil</td><td>Bigger fire + Smoke</td></tr>
+        <tr><td>Fire + TNT</td><td>Explosion</td></tr>
+        <tr><td>Lightning + Sand</td><td>Glass</td></tr>
+        <tr><td>Heat + Ice</td><td>Water</td></tr>
+        <tr><td>Heat + Water</td><td>Steam</td></tr>
+        <tr><td>Cold + Water</td><td>Ice</td></tr>
+        <tr><td>Cold + Steam</td><td>Water</td></tr>
+        <tr><td>Heat + Wax</td><td>Oil</td></tr>
+        <tr><td>Heat + Sand</td><td>Glass</td></tr>
+        <tr><td>Heat + Stone</td><td>Lava</td></tr>
+      </table>
+    </div>
+
+    <h2>Temperature</h2>
+    <div class="section">
+      <p>Every particle has a temperature. Heat conducts between neighbors based on each element's conductivity. Effects:</p>
+      <ul>
+        <li>Hot particles glow orange-red</li>
+        <li>Cold particles glow blue</li>
+        <li>Crossing melt/boil/freeze thresholds triggers state changes</li>
+        <li>Fire, Lava, Ember, Lightning, and Plasma radiate extreme heat</li>
+        <li>Ice and Snow radiate cold</li>
+        <li>All particles slowly drift toward ambient temperature (22°)</li>
+      </ul>
+    </div>
+
+    <h2>Tips</h2>
+    <div class="section">
+      <ul>
+        <li>Use <b>Wall</b> to build containers before pouring liquids</li>
+        <li>Create a <b>Fuse</b> trail leading to <b>TNT</b> for delayed detonation</li>
+        <li>Place <b>Clone</b> next to any element for infinite production</li>
+        <li>Use <b>Source mode</b> for rain (Water), sandstorms (Sand), volcanic eruptions (Lava)</li>
+        <li>Build an ecosystem: Seed + Water = growing plants</li>
+        <li>Oil floats on Water — set it on fire for a surface blaze</li>
+        <li>Flip <b>Gravity</b> to reverse everything</li>
+        <li><b>Void</b> makes a great drain at the bottom of a scene</li>
+      </ul>
+    </div>
+
+    <p style="margin-top:16px; color:#555; font-size:11px; text-align:center;">
+      SimulatedSand &mdash; Touch to create, physics does the rest.
     </p>
+    </div>
   </div>
 
   <script src="/sim/constants.js"></script>

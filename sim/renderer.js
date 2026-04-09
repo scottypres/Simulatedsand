@@ -29,22 +29,13 @@ class Renderer {
     if (!container) return;
     const cw = container.clientWidth;
     const ch = container.clientHeight;
-    const aspect = this.grid.width / this.grid.height;
-    const containerAspect = cw / ch;
 
-    let displayW, displayH;
-    if (containerAspect > aspect) {
-      displayH = ch;
-      displayW = ch * aspect;
-    } else {
-      displayW = cw;
-      displayH = cw / aspect;
-    }
-
-    this.displayW = displayW;
-    this.displayH = displayH;
-    this.canvas.style.width = displayW + "px";
-    this.canvas.style.height = displayH + "px";
+    // Fill the entire container — the sim grid was already sized to match
+    // the device aspect ratio, so just stretch to fill.
+    this.canvas.style.width = cw + "px";
+    this.canvas.style.height = ch + "px";
+    this.displayW = cw;
+    this.displayH = ch;
     this.containerW = cw;
     this.containerH = ch;
   }
