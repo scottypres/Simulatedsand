@@ -14,6 +14,7 @@ class UIController {
     this.setupToolbar();
     this.setupPanel();
     this.setupBrushSlider();
+    this.setupSettings();
 
     // Select sand by default
     this.selectElement(E.SAND);
@@ -136,6 +137,7 @@ class UIController {
     });
     document.getElementById("overlay-bg").addEventListener("click", () => {
       document.getElementById("info-overlay").classList.remove("visible");
+      document.getElementById("settings-overlay").classList.remove("visible");
       document.getElementById("overlay-bg").classList.remove("visible");
     });
   }
@@ -184,6 +186,76 @@ class UIController {
         this.brushSliderVisible = false;
         container.classList.remove("visible");
       }, 3000);
+    });
+  }
+
+  setupSettings() {
+    const btnSettings = document.getElementById("btn-settings");
+    const overlay = document.getElementById("settings-overlay");
+    const bg = document.getElementById("overlay-bg");
+    const scaleSlider = document.getElementById("setting-scale");
+    const scaleValue = document.getElementById("scale-value");
+    const gridLabel = document.getElementById("grid-size-label");
+    const applyBtn = document.getElementById("btn-apply-settings");
+    const closeBtn = document.getElementById("settings-close");
+
+    const scaleNames = { 1: "Max", 2: "High", 3: "Medium", 4: "Low", 5: "Lowest" };
+    let pendingScale = currentPixelScale;
+
+    function updatePreview(scale) {
+      const dims = computeSimDimensions(scale);
+      const total = dims.width * dims.height;
+      scaleValue.textContent = scaleNames[scale] || scale;
+      gridLabel.textContent = dims.width + " x " + dims.height + " = " + total.toLocaleString() + " particles";
+    }
+
+    function openSettings() {
+      pendingScale = currentPixelScale;
+      scaleSlider.value = currentPixelScale;
+      updatePreview(currentPixelScale);
+      // Highlight active preset
+      document.querySelectorAll(".preset-btn").forEach(b => {
+        b.classList.toggle("active", parseInt(b.dataset.scale) === currentPixelScale);
+      });
+      overlay.classList.add("visible");
+      bg.classList.add("visible");
+    }
+
+    function closeSettings() {
+      overlay.classList.remove("visible");
+      bg.classList.remove("visible");
+    }
+
+    btnSettings.addEventListener("click", openSettings);
+    closeBtn.addEventListener("click", closeSettings);
+
+    // Slider updates preview
+    scaleSlider.addEventListener("input", () => {
+      pendingScale = parseInt(scaleSlider.value);
+      updatePreview(pendingScale);
+      document.querySelectorAll(".preset-btn").forEach(b => {
+        b.classList.toggle("active", parseInt(b.dataset.scale) === pendingScale);
+      });
+    });
+
+    // Preset buttons
+    document.querySelectorAll(".preset-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        pendingScale = parseInt(btn.dataset.scale);
+        scaleSlider.value = pendingScale;
+        updatePreview(pendingScale);
+        document.querySelectorAll(".preset-btn").forEach(b => {
+          b.classList.toggle("active", parseInt(b.dataset.scale) === pendingScale);
+        });
+      });
+    });
+
+    // Apply
+    applyBtn.addEventListener("click", () => {
+      if (window.rebuildSim) {
+        window.rebuildSim(pendingScale);
+      }
+      closeSettings();
     });
   }
 }

@@ -2,13 +2,41 @@
 "use strict";
 
 (function() {
-  // Initialize simulation
-  const grid = new SimGrid(SIM_WIDTH, SIM_HEIGHT);
-  const canvas = document.getElementById("simCanvas");
-  const renderer = new Renderer(canvas, grid);
-  const physics = new PhysicsEngine(grid);
-  const input = new InputManager(canvas, renderer, physics);
-  const ui = new UIController(input);
+  // Mutable sim state
+  let grid, renderer, physics, input, ui;
+  let canvas = document.getElementById("simCanvas");
+
+  function initSim() {
+    grid = new SimGrid(SIM_WIDTH, SIM_HEIGHT);
+    renderer = new Renderer(canvas, grid);
+    physics = new PhysicsEngine(grid);
+    input = new InputManager(canvas, renderer, physics);
+    // Only create UI once
+    if (!ui) {
+      ui = new UIController(input);
+    } else {
+      // Reconnect existing UI to new input
+      ui.input = input;
+    }
+  }
+
+  initSim();
+
+  // Expose rebuild function for settings
+  window.rebuildSim = function(newScale) {
+    currentPixelScale = newScale;
+    localStorage.setItem("simScale", newScale);
+    const dims = computeSimDimensions(newScale);
+    SIM_WIDTH = dims.width;
+    SIM_HEIGHT = dims.height;
+    initSim();
+    renderer.fitToContainer();
+  };
+
+  // Expose getter for settings UI
+  window.getSimInfo = function() {
+    return { width: SIM_WIDTH, height: SIM_HEIGHT, scale: currentPixelScale };
+  };
 
   // FPS tracking
   let frameCount = 0;
@@ -17,10 +45,19 @@
 
   // Resize handler
   function onResize() {
-    renderer.fitToContainer();
+    if (renderer) renderer.fitToContainer();
   }
   window.addEventListener("resize", onResize);
-  window.addEventListener("orientationchange", () => setTimeout(onResize, 100));
+  window.addEventListener("orientationchange", () => {
+    // iPad rotation fix: wait for layout to settle then refit
+    setTimeout(onResize, 50);
+    setTimeout(onResize, 200);
+    setTimeout(onResize, 500);
+  });
+  // Also handle visualViewport resize (more reliable on iOS/iPad)
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", onResize);
+  }
 
   // Interaction checking pass — runs neighbor interactions
   function runInteractions() {
@@ -42,7 +79,6 @@
             const t = g.type[i];
             if (t === E.EMPTY) continue;
 
-            // Check right and below neighbors for interactions
             if (x < w - 1) {
               const ni = i + 1;
               if (g.type[ni] !== E.EMPTY && g.type[ni] !== t) {
@@ -72,7 +108,6 @@
 
     renderer.render();
 
-    // FPS counter
     frameCount++;
     if (now - lastFpsTime >= 500) {
       const fps = Math.round(frameCount * 1000 / (now - lastFpsTime));
@@ -83,13 +118,8 @@
   }
 
   // Auto-save undo snapshot periodically
-  let lastAutoSave = 0;
   setInterval(() => {
-    const now = performance.now();
-    if (now - lastAutoSave > 10000) {
-      grid.saveUndo();
-      lastAutoSave = now;
-    }
+    if (grid) grid.saveUndo();
   }, 10000);
 
   // Start
@@ -100,7 +130,6 @@
   document.addEventListener("gesturechange", (e) => e.preventDefault());
   document.addEventListener("gestureend", (e) => e.preventDefault());
 
-  // Prevent pull-to-refresh
   document.body.addEventListener("touchmove", (e) => {
     if (e.target === canvas || e.target.closest("#canvas-container")) {
       e.preventDefault();

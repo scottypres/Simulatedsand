@@ -9,23 +9,25 @@ const GRAVITY    = 1;
 
 // Pixel density for sim — how many screen pixels per sim pixel.
 // Lower = more sim pixels = more detail but slower on weak devices.
-// We target ~3px per sim cell on phones, ~2px on tablets/desktop.
-const SIM_PIXEL_SCALE = 3;
+let currentPixelScale = parseInt(localStorage.getItem("simScale")) || 3;
 
 // Compute sim dimensions from device screen and available space.
-// Toolbar ~44px, element panel ~180px, safe areas ~40px each.
-function computeSimDimensions() {
+function computeSimDimensions(scale) {
   const screenW = window.innerWidth;
   const screenH = window.innerHeight;
-  const dpr = Math.min(window.devicePixelRatio || 1, 3);
 
-  // Estimate chrome height (toolbar + panel + safe areas)
-  const chromeH = 230;
+  // Measure actual chrome height if DOM is ready, otherwise estimate
+  const toolbar = document.getElementById("toolbar");
+  const panel = document.getElementById("element-panel");
+  let chromeH;
+  if (toolbar && panel) {
+    chromeH = toolbar.offsetHeight + panel.offsetHeight;
+  } else {
+    chromeH = 230;
+  }
   const availW = screenW;
   const availH = Math.max(screenH - chromeH, 200);
 
-  // Scale determines how many sim cells we get
-  const scale = SIM_PIXEL_SCALE;
   let simW = Math.floor(availW / scale);
   let simH = Math.floor(availH / scale);
 
@@ -34,15 +36,16 @@ function computeSimDimensions() {
   simH = Math.max(CHUNK_SIZE * 4, Math.floor(simH / CHUNK_SIZE) * CHUNK_SIZE);
 
   // Clamp to reasonable limits for performance
-  simW = Math.min(simW, 320);
-  simH = Math.min(simH, 560);
+  const maxCells = 400;
+  simW = Math.min(simW, maxCells);
+  simH = Math.min(simH, maxCells * 2);
 
   return { width: simW, height: simH };
 }
 
-const SIM_DIMS = computeSimDimensions();
-const SIM_WIDTH  = SIM_DIMS.width;
-const SIM_HEIGHT = SIM_DIMS.height;
+const SIM_DIMS = computeSimDimensions(currentPixelScale);
+let SIM_WIDTH  = SIM_DIMS.width;
+let SIM_HEIGHT = SIM_DIMS.height;
 
 // Element type IDs
 const E = Object.freeze({
