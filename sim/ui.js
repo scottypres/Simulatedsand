@@ -18,6 +18,7 @@ class UIController {
     this.setupSaveLoad();
     this.setupChallengeUI();
     this.setupWind();
+    this.setupAccelerometer();
 
     // Select sand by default
     this.selectElement(E.SAND);
@@ -102,6 +103,22 @@ class UIController {
     const btnSource = document.getElementById("btn-source");
     const btnGravity = document.getElementById("btn-gravity");
     const btnInfo = document.getElementById("btn-info");
+
+    // ── Menu dropdown toggle ──
+    const btnMenu = document.getElementById("btn-menu");
+    const menuDropdown = document.getElementById("menu-dropdown");
+    if (btnMenu && menuDropdown) {
+      btnMenu.addEventListener("click", (e) => {
+        e.stopPropagation();
+        menuDropdown.classList.toggle("visible");
+      });
+      // Close menu when tapping outside
+      document.addEventListener("click", (e) => {
+        if (!menuDropdown.contains(e.target) && e.target !== btnMenu) {
+          menuDropdown.classList.remove("visible");
+        }
+      });
+    }
 
     btnSource.addEventListener("click", () => {
       this.input.sourceMode = !this.input.sourceMode;
@@ -432,6 +449,96 @@ class UIController {
       updateWindDisplay();
       if (navigator.vibrate) navigator.vibrate(10);
     });
+  }
+
+  setupAccelerometer() {
+    const self = this;
+    const btn = document.getElementById("btn-accel");
+    const indicator = document.getElementById("accel-indicator");
+    let accelActive = false;
+    let orientHandler = null;
+
+    function onOrientation(e) {
+      // beta: front-back tilt (-180 to 180). 0=flat, 90=upright facing you
+      // gamma: left-right tilt (-90 to 90). 0=level, +ve=tilted right
+      const gamma = e.gamma || 0;
+      const beta = e.beta || 0;
+
+      // Phone flat (beta~0): no gravity. Upright (beta~90): full gravity.
+      // Map beta to gravity strength: 0 at flat, 1 at upright
+      const tiltStrength = Math.max(0, Math.min(1, Math.abs(beta) / 90));
+
+      // Vertical gravity: positive beta = screen facing you = particles fall down
+      // Scale gravity strength by how upright the phone is
+      if (Math.abs(beta) < 5) {
+        // Phone basically flat — no vertical gravity
+        self.input.physics.gravityDir = 1;
+        self.input.physics.gravityStrength = 0;
+      } else {
+        self.input.physics.gravityDir = beta > 0 ? 1 : -1;
+        self.input.physics.gravityStrength = tiltStrength;
+      }
+
+      // Horizontal gravity from left-right tilt
+      // gamma/45 gives a nice -1 to 1 range at 45 degree tilt
+      self.input.physics.gravityX = Math.max(-1, Math.min(1, gamma / 45));
+
+      // Update indicator
+      const arrow = gamma > 10 ? "\u2192" : (gamma < -10 ? "\u2190" : "\u2022");
+      const vArrow = tiltStrength < 0.15 ? "\u23F8" : (beta > 0 ? "\u2193" : "\u2191");
+      indicator.textContent = "Tilt: " + arrow + " " + vArrow + " " + Math.round(tiltStrength * 100) + "%";
+    }
+
+    function enableAccel() {
+      accelActive = true;
+      btn.classList.add("active");
+      indicator.classList.add("visible");
+      orientHandler = onOrientation;
+      window.addEventListener("deviceorientation", orientHandler);
+    }
+
+    function disableAccel() {
+      accelActive = false;
+      btn.classList.remove("active");
+      indicator.classList.remove("visible");
+      if (orientHandler) {
+        window.removeEventListener("deviceorientation", orientHandler);
+        orientHandler = null;
+      }
+      // Reset gravity to defaults
+      self.input.physics.gravityX = 0;
+      self.input.physics.gravityDir = 1;
+      self.input.physics.gravityStrength = 1;
+    }
+
+    if (btn) {
+      btn.addEventListener("click", () => {
+        if (accelActive) {
+          disableAccel();
+          return;
+        }
+        // iOS 13+ requires permission request
+        if (typeof DeviceOrientationEvent !== "undefined" &&
+            typeof DeviceOrientationEvent.requestPermission === "function") {
+          DeviceOrientationEvent.requestPermission()
+            .then(function(state) {
+              if (state === "granted") {
+                enableAccel();
+              } else {
+                alert("Accelerometer permission denied.");
+              }
+            })
+            .catch(function() {
+              alert("Could not request accelerometer permission.");
+            });
+        } else if ("DeviceOrientationEvent" in window) {
+          // Non-iOS or older iOS — just enable
+          enableAccel();
+        } else {
+          alert("Accelerometer not available on this device.");
+        }
+      });
+    }
   }
 
   setupSaveLoad() {

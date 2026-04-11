@@ -298,15 +298,44 @@
       color: #8899aa; font-size: 10px; display: none; pointer-events: none; z-index: 5;
     }
     #wind-indicator.visible { display: block; }
+    #accel-indicator {
+      position: absolute; bottom: 6px; left: 6px;
+      background: rgba(22,33,62,0.8); padding: 3px 8px; border-radius: 8px;
+      color: #4fc3f7; font-size: 10px; display: none; pointer-events: none; z-index: 5;
+    }
+    #accel-indicator.visible { display: block; }
+
+    /* ── Menu Dropdown ── */
+    #menu-wrap { position: relative; }
+    #menu-dropdown {
+      position: absolute; top: calc(100% + 6px); right: 0;
+      background: rgba(22,33,62,0.98); border: 1px solid #0f3460;
+      border-radius: 12px; padding: 6px; display: none; z-index: 50;
+      min-width: 170px; backdrop-filter: blur(10px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    #menu-dropdown.visible { display: flex; flex-direction: column; gap: 2px; }
+    #menu-dropdown .menu-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: 8px; border: none;
+      background: none; color: #ccc; font-size: 13px; cursor: pointer;
+      text-align: left; white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #menu-dropdown .menu-item:active { background: rgba(15,52,96,0.6); }
+    #menu-dropdown .menu-item.active { color: #e94560; }
+    #menu-dropdown .menu-item .mi-icon { width: 22px; text-align: center; font-size: 15px; flex-shrink: 0; }
+    #menu-dropdown .menu-item .mi-label { flex: 1; }
+    #menu-sep { height: 1px; background: rgba(15,52,96,0.6); margin: 2px 8px; }
   </style>
 </head>
 <body>
   <div id="app">
     <div id="toolbar">
       <div id="toolbar-left">
-        <button class="btn" id="btn-play" title="Pause/Play">▶</button>
-        <button class="btn" id="btn-clear" title="Clear">✕</button>
-        <button class="btn" id="btn-undo" title="Undo">↩</button>
+        <button class="btn" id="btn-play" title="Pause/Play">&#x25B6;</button>
+        <button class="btn" id="btn-clear" title="Clear">&#x2715;</button>
+        <button class="btn" id="btn-undo" title="Undo">&#x21A9;</button>
       </div>
       <div id="toolbar-center">
         <span id="fps-counter">60 fps</span>
@@ -315,13 +344,20 @@
         </button>
       </div>
       <div id="toolbar-right">
-        <button class="btn" id="btn-source" title="Source Mode">S</button>
-        <button class="btn" id="btn-wind" title="Wind">W</button>
         <button class="btn" id="btn-challenge" title="Challenge Mode">&#127942;</button>
-        <button class="btn" id="btn-saves" title="Save/Load">&#9776;</button>
-        <button class="btn" id="btn-gravity" title="Gravity">G</button>
-        <button class="btn" id="btn-settings" title="Settings">&#9881;</button>
-        <button class="btn" id="btn-info" title="Info">?</button>
+        <div id="menu-wrap">
+          <button class="btn" id="btn-menu" title="Menu">&#x22EF;</button>
+          <div id="menu-dropdown">
+            <button class="menu-item" id="btn-source"><span class="mi-icon">S</span><span class="mi-label">Source Mode</span></button>
+            <button class="menu-item" id="btn-gravity"><span class="mi-icon">G</span><span class="mi-label">Flip Gravity</span></button>
+            <button class="menu-item" id="btn-wind"><span class="mi-icon">W</span><span class="mi-label">Wind</span></button>
+            <button class="menu-item" id="btn-accel"><span class="mi-icon">&#8982;</span><span class="mi-label">Accelerometer</span></button>
+            <div id="menu-sep"></div>
+            <button class="menu-item" id="btn-saves"><span class="mi-icon">&#128190;</span><span class="mi-label">Save / Load</span></button>
+            <button class="menu-item" id="btn-settings"><span class="mi-icon">&#9881;</span><span class="mi-label">Settings</span></button>
+            <button class="menu-item" id="btn-info"><span class="mi-icon">?</span><span class="mi-label">Info</span></button>
+          </div>
+        </div>
       </div>
     </div>
     <div id="canvas-container">
@@ -335,6 +371,7 @@
         <div class="ch-desc" id="ch-desc"></div>
       </div>
       <div id="wind-indicator">Wind: 0</div>
+      <div id="accel-indicator"></div>
     </div>
     <div id="element-panel">
       <div id="panel-toggle"><div class="handle"></div></div>

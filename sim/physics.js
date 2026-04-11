@@ -5,6 +5,8 @@ class PhysicsEngine {
   constructor(grid) {
     this.grid = grid;
     this.gravityDir = 1; // 1 = down, -1 = up
+    this.gravityX = 0;  // -1 to 1, horizontal gravity from accelerometer
+    this.gravityStrength = 1; // 0 to 1, how strong vertical gravity is (accelerometer)
     this.openBottom = localStorage.getItem("simOpenBottom") === "true";
     this.simSpeed = parseInt(localStorage.getItem("simSpeed")) || 1;
     this.wind = 0; // -3 to 3, negative = left, positive = right
@@ -257,41 +259,62 @@ class PhysicsEngine {
   movePowder(x, y, i, gDir) {
     const g = this.grid;
     const w = g.width, h = g.height;
-    const below = y + gDir;
+    const gStr = this.gravityStrength;
 
-    if (below < 0 || below >= h) return;
+    // Skip vertical movement probabilistically based on gravity strength
+    const doVertical = gStr >= 1 || Math.random() < gStr;
 
-    const iBelow = below * w + x;
-    const tBelow = g.type[iBelow];
+    if (doVertical) {
+      const below = y + gDir;
+      if (below >= 0 && below < h) {
+        const iBelow = below * w + x;
+        const tBelow = g.type[iBelow];
 
-    // Fall straight down
-    if (tBelow === E.EMPTY) {
-      this.swapCells(x, y, i, x, below, iBelow);
-      return;
-    }
+        // Fall straight down
+        if (tBelow === E.EMPTY) {
+          this.swapCells(x, y, i, x, below, iBelow);
+          return;
+        }
 
-    // Fall into liquid (density check)
-    const elBelow = ELEMENTS[tBelow];
-    const elSelf  = ELEMENTS[g.type[i]];
-    if (elBelow && elSelf && elBelow.state === STATE.LIQUID && elSelf.density > elBelow.density) {
-      this.swapCells(x, y, i, x, below, iBelow);
-      return;
-    }
+        // Fall into liquid (density check)
+        const elBelow = ELEMENTS[tBelow];
+        const elSelf  = ELEMENTS[g.type[i]];
+        if (elBelow && elSelf && elBelow.state === STATE.LIQUID && elSelf.density > elBelow.density) {
+          this.swapCells(x, y, i, x, below, iBelow);
+          return;
+        }
 
-    // Slide diagonally
-    const dir = Math.random() < 0.5 ? -1 : 1;
-    for (const d of [dir, -dir]) {
-      const nx = x + d;
-      if (nx < 0 || nx >= w) continue;
-      const ni = below * w + nx;
-      const nt = g.type[ni];
-      if (nt === E.EMPTY) {
-        this.swapCells(x, y, i, nx, below, ni);
-        return;
+        // Slide diagonally
+        const gx = this.gravityX;
+        const dir = gx !== 0 ? (Math.random() < (0.5 + gx * 0.4) ? 1 : -1) : (Math.random() < 0.5 ? -1 : 1);
+        for (const d of [dir, -dir]) {
+          const nx = x + d;
+          if (nx < 0 || nx >= w) continue;
+          const ni = below * w + nx;
+          const nt = g.type[ni];
+          if (nt === E.EMPTY) {
+            this.swapCells(x, y, i, nx, below, ni);
+            return;
+          }
+          if (ELEMENTS[nt] && ELEMENTS[nt].state === STATE.LIQUID && elSelf && elSelf.density > ELEMENTS[nt].density) {
+            this.swapCells(x, y, i, nx, below, ni);
+            return;
+          }
+        }
       }
-      if (ELEMENTS[nt] && ELEMENTS[nt].state === STATE.LIQUID && elSelf.density > ELEMENTS[nt].density) {
-        this.swapCells(x, y, i, nx, below, ni);
-        return;
+    }
+
+    // Horizontal gravity drift (accelerometer)
+    const gx = this.gravityX;
+    if (gx !== 0 && Math.random() < Math.abs(gx) * 0.6) {
+      const hdir = gx > 0 ? 1 : -1;
+      const nx = x + hdir;
+      if (nx >= 0 && nx < w) {
+        const ni = y * w + nx;
+        if (g.type[ni] === E.EMPTY) {
+          this.swapCells(x, y, i, nx, y, ni);
+          return;
+        }
       }
     }
 
@@ -313,41 +336,60 @@ class PhysicsEngine {
   moveLiquid(x, y, i, gDir, density) {
     const g = this.grid;
     const w = g.width, h = g.height;
-    const below = y + gDir;
+    const gStr = this.gravityStrength;
+    const doVertical = gStr >= 1 || Math.random() < gStr;
 
-    // Fall down
-    if (below >= 0 && below < h) {
-      const iBelow = below * w + x;
-      const tBelow = g.type[iBelow];
+    if (doVertical) {
+      const below = y + gDir;
+      // Fall down
+      if (below >= 0 && below < h) {
+        const iBelow = below * w + x;
+        const tBelow = g.type[iBelow];
 
-      if (tBelow === E.EMPTY) {
-        this.swapCells(x, y, i, x, below, iBelow);
-        return;
+        if (tBelow === E.EMPTY) {
+          this.swapCells(x, y, i, x, below, iBelow);
+          return;
+        }
+
+        // Displace lighter liquids
+        const elBelow = ELEMENTS[tBelow];
+        if (elBelow && elBelow.state === STATE.LIQUID && density > elBelow.density) {
+          this.swapCells(x, y, i, x, below, iBelow);
+          return;
+        }
+
+        // Diagonal down
+        const gx = this.gravityX;
+        const dir = gx !== 0 ? (Math.random() < (0.5 + gx * 0.4) ? 1 : -1) : (Math.random() < 0.5 ? -1 : 1);
+        for (const d of [dir, -dir]) {
+          const nx = x + d;
+          if (nx < 0 || nx >= w) continue;
+          const ni = below * w + nx;
+          if (g.type[ni] === E.EMPTY) {
+            this.swapCells(x, y, i, nx, below, ni);
+            return;
+          }
+        }
       }
+    }
 
-      // Displace lighter liquids
-      const elBelow = ELEMENTS[tBelow];
-      if (elBelow && elBelow.state === STATE.LIQUID && density > elBelow.density) {
-        this.swapCells(x, y, i, x, below, iBelow);
-        return;
-      }
-
-      // Diagonal down
-      const dir = Math.random() < 0.5 ? -1 : 1;
-      for (const d of [dir, -dir]) {
-        const nx = x + d;
-        if (nx < 0 || nx >= w) continue;
-        const ni = below * w + nx;
+    // Horizontal gravity drift (accelerometer)
+    const gx = this.gravityX;
+    if (gx !== 0 && Math.random() < Math.abs(gx) * 0.5) {
+      const hdir = gx > 0 ? 1 : -1;
+      const nx = x + hdir;
+      if (nx >= 0 && nx < w) {
+        const ni = y * w + nx;
         if (g.type[ni] === E.EMPTY) {
-          this.swapCells(x, y, i, nx, below, ni);
+          this.swapCells(x, y, i, nx, y, ni);
           return;
         }
       }
     }
 
-    // Spread sideways (liquid flow)
+    // Spread sideways (liquid flow) — bias toward gravityX
     const spreadDist = 3 + ((Math.random() * 2) | 0);
-    const dir = Math.random() < 0.5 ? -1 : 1;
+    const dir = gx !== 0 ? (Math.random() < (0.5 + gx * 0.4) ? 1 : -1) : (Math.random() < 0.5 ? -1 : 1);
     for (const d of [dir, -dir]) {
       for (let s = 1; s <= spreadDist; s++) {
         const nx = x + d * s;
@@ -365,25 +407,32 @@ class PhysicsEngine {
   moveGas(x, y, i, gDir) {
     const g = this.grid;
     const w = g.width, h = g.height;
-    const above = y - gDir; // gases go opposite to gravity
+    const gStr = this.gravityStrength;
+    const doVertical = gStr >= 1 || Math.random() < gStr;
 
-    // Rise
-    if (above >= 0 && above < h) {
-      const iAbove = above * w + x;
-      if (g.type[iAbove] === E.EMPTY) {
-        this.swapCells(x, y, i, x, above, iAbove);
-        return;
-      }
-      // Displace liquids
-      const elAbove = ELEMENTS[g.type[iAbove]];
-      if (elAbove && (elAbove.state === STATE.LIQUID || elAbove.state === STATE.POWDER)) {
-        this.swapCells(x, y, i, x, above, iAbove);
-        return;
+    if (doVertical) {
+      const above = y - gDir; // gases go opposite to gravity
+      // Rise
+      if (above >= 0 && above < h) {
+        const iAbove = above * w + x;
+        if (g.type[iAbove] === E.EMPTY) {
+          this.swapCells(x, y, i, x, above, iAbove);
+          return;
+        }
+        // Displace liquids
+        const elAbove = ELEMENTS[g.type[iAbove]];
+        if (elAbove && (elAbove.state === STATE.LIQUID || elAbove.state === STATE.POWDER)) {
+          this.swapCells(x, y, i, x, above, iAbove);
+          return;
+        }
       }
     }
 
-    // Random lateral movement with wind influence
-    const dx = ((Math.random() * 3) | 0) - 1 + (this.wind > 0 ? (Math.random() < Math.abs(this.wind) * 0.2 ? 1 : 0) : (this.wind < 0 ? (Math.random() < Math.abs(this.wind) * 0.2 ? -1 : 0) : 0));
+    // Random lateral movement with wind + accelerometer influence
+    const gx = this.gravityX;
+    const windBias = this.wind > 0 ? (Math.random() < Math.abs(this.wind) * 0.2 ? 1 : 0) : (this.wind < 0 ? (Math.random() < Math.abs(this.wind) * 0.2 ? -1 : 0) : 0);
+    const accelBias = gx !== 0 ? (Math.random() < Math.abs(gx) * 0.4 ? (gx > 0 ? 1 : -1) : 0) : 0;
+    const dx = ((Math.random() * 3) | 0) - 1 + windBias + accelBias;
     const dy = ((Math.random() * 3) | 0) - 1;
     const nx = x + dx, ny = y + dy;
     if (nx >= 0 && nx < w && ny >= 0 && ny < h) {

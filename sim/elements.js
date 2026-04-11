@@ -49,7 +49,7 @@ defElem(E.EMPTY, "Erase", "tools", STATE.SPECIAL, {
 
 defElem(E.SAND, "Sand", "basic", STATE.POWDER, {
   colors: [[218,194,130],[210,180,120],[225,200,140],[200,175,115]],
-  density: 4, meltPoint: 1700, meltsTo: E.GLASS, hardness: 2,
+  density: 4, meltPoint: 1000, meltsTo: E.GLASS, hardness: 2,
 });
 
 defElem(E.WATER, "Water", "liquid", STATE.LIQUID, {

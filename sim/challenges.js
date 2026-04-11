@@ -479,39 +479,28 @@ const CHALLENGE_LEVELS = [
   // ── Level 11: Lava Forge ──
   {
     name: "Lava Forge",
-    description: "Turn sand into glass using lava",
-    elements: [E.LAVA, E.SAND],
-    starTimes: [15, 30, 60],
+    description: "Pour lava onto sand to melt it into glass",
+    elements: [E.LAVA, E.SAND, E.WALL],
+    starTimes: [20, 40, 80],
     setup(grid) {
       const w = grid.width;
       const h = grid.height;
       // Forge container at the bottom
-      const forgeX = Math.floor(w * 0.25);
-      const forgeW = Math.floor(w * 0.5);
-      const forgeY = Math.floor(h * 0.7);
-      const forgeH = Math.floor(h * 0.2);
+      const forgeX = Math.floor(w * 0.2);
+      const forgeW = Math.floor(w * 0.6);
+      const forgeY = Math.floor(h * 0.65);
+      const forgeH = Math.floor(h * 0.25);
       // Forge floor and walls
       hline(grid, forgeX, forgeX + forgeW, forgeY + forgeH, E.WALL);
       vline(grid, forgeX, forgeY, forgeY + forgeH, E.WALL);
       vline(grid, forgeX + forgeW, forgeY, forgeY + forgeH, E.WALL);
-      // Some lava already in the forge to get started
-      const lavaH = Math.max(2, Math.floor(forgeH * 0.3));
-      fillRect(grid, forgeX + 1, forgeY + forgeH - lavaH, forgeX + forgeW - 1, forgeY + forgeH - 1, E.LAVA);
-      // Decorative walls creating a funnel above
-      const funnelY = Math.floor(h * 0.5);
-      const funnelLeft = Math.floor(w * 0.3);
-      const funnelRight = Math.floor(w * 0.7);
-      // Funnel walls angled inward (simulated with steps)
-      for (let step = 0; step < 5; step++) {
-        const sy = funnelY + step * 2;
-        const offset = step * Math.floor(w * 0.02);
-        if (grid.inBounds(funnelLeft - offset, sy)) grid.set(funnelLeft - offset, sy, E.WALL);
-        if (grid.inBounds(funnelRight + offset, sy)) grid.set(funnelRight + offset, sy, E.WALL);
-      }
+      // Fill bottom half with sand
+      const sandH = Math.max(3, Math.floor(forgeH * 0.5));
+      fillRect(grid, forgeX + 1, forgeY + forgeH - sandH, forgeX + forgeW - 1, forgeY + forgeH - 1, E.SAND);
     },
     check(grid) {
       const count = countAll(grid, E.GLASS);
-      return count >= 20;
+      return count >= 15;
     }
   },
 
