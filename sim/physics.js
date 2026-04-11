@@ -312,12 +312,18 @@ class PhysicsEngine {
 
     // Horizontal gravity drift (accelerometer)
     const gx = this.gravityX;
-    if (gx !== 0 && Math.random() < Math.abs(gx) * 0.6) {
+    if (gx !== 0) {
+      const absGx = Math.abs(gx);
       const hdir = gx > 0 ? 1 : -1;
-      const nx = x + hdir;
-      if (nx >= 0 && nx < w) {
+      // At full tilt: up to 3 pixels sideways; at half tilt: 1-2 pixels
+      const reach = Math.ceil(absGx * 3);
+      for (let s = 1; s <= reach; s++) {
+        if (Math.random() > absGx) break;
+        const nx = x + hdir * s;
+        if (nx < 0 || nx >= w) break;
         const ni = y * w + nx;
-        if (g.type[ni] === E.EMPTY) {
+        if (g.type[ni] !== E.EMPTY) break;
+        if (s === reach || Math.random() < 0.5) {
           this.swapCells(x, y, i, nx, y, ni);
           return;
         }
@@ -381,12 +387,17 @@ class PhysicsEngine {
 
     // Horizontal gravity drift (accelerometer)
     const gx = this.gravityX;
-    if (gx !== 0 && Math.random() < Math.abs(gx) * 0.5) {
+    if (gx !== 0) {
+      const absGx = Math.abs(gx);
       const hdir = gx > 0 ? 1 : -1;
-      const nx = x + hdir;
-      if (nx >= 0 && nx < w) {
+      const reach = Math.ceil(absGx * 4); // liquids slide further
+      for (let s = 1; s <= reach; s++) {
+        if (Math.random() > absGx) break;
+        const nx = x + hdir * s;
+        if (nx < 0 || nx >= w) break;
         const ni = y * w + nx;
-        if (g.type[ni] === E.EMPTY) {
+        if (g.type[ni] !== E.EMPTY) break;
+        if (s === reach || Math.random() < 0.4) {
           this.swapCells(x, y, i, nx, y, ni);
           return;
         }
@@ -437,7 +448,7 @@ class PhysicsEngine {
     // Random lateral movement with wind + accelerometer influence
     const gx = this.gravityX;
     const windBias = this.wind > 0 ? (Math.random() < Math.abs(this.wind) * 0.2 ? 1 : 0) : (this.wind < 0 ? (Math.random() < Math.abs(this.wind) * 0.2 ? -1 : 0) : 0);
-    const accelBias = gx !== 0 ? (Math.random() < Math.abs(gx) * 0.4 ? (gx > 0 ? 1 : -1) : 0) : 0;
+    const accelBias = gx !== 0 ? Math.round(gx * 2) : 0; // -2 to +2 at full tilt
     const dx = ((Math.random() * 3) | 0) - 1 + windBias + accelBias;
     const dy = ((Math.random() * 3) | 0) - 1;
     const nx = x + dx, ny = y + dy;
