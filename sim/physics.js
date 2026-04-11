@@ -7,6 +7,7 @@ class PhysicsEngine {
     this.gravityDir = 1; // 1 = down, -1 = up
     this.openBottom = localStorage.getItem("simOpenBottom") === "true";
     this.simSpeed = parseInt(localStorage.getItem("simSpeed")) || 1;
+    this.wind = 0; // -3 to 3, negative = left, positive = right
   }
 
   update() {
@@ -86,6 +87,11 @@ class PhysicsEngine {
       case E.PLASMA:  this.updatePlasma(x, y, i); break;
       case E.EMBER:   this.updateEmber(x, y, i, gDir); break;
       case E.CEMENT:  this.updateCement(x, y, i, gDir); break;
+      case E.ANT:      this.updateAnt(x, y, i, gDir); return;
+      case E.FIREWORK:  this.updateFirework(x, y, i, gDir); break;
+      case E.TORCH:    this.updateTorch(x, y, i); return;
+      case E.BATTERY:  this.updateBattery(x, y, i); return;
+      case E.WIRE:     this.updateWire(x, y, i); return;
     }
 
     // Recheck type
@@ -288,6 +294,20 @@ class PhysicsEngine {
         return;
       }
     }
+
+    // Wind drift for light powders
+    if (this.wind !== 0) {
+      const el = ELEMENTS[g.type[i]];
+      if (el && el.density < 3) {
+        const wd = this.wind > 0 ? 1 : -1;
+        if (Math.random() < Math.abs(this.wind) * 0.1) {
+          const nx = x + wd;
+          if (nx >= 0 && nx < w && g.type[y * w + nx] === E.EMPTY) {
+            this.swapCells(x, y, i, nx, y, y * w + nx);
+          }
+        }
+      }
+    }
   }
 
   moveLiquid(x, y, i, gDir, density) {
@@ -362,8 +382,8 @@ class PhysicsEngine {
       }
     }
 
-    // Random lateral movement
-    const dx = ((Math.random() * 3) | 0) - 1;
+    // Random lateral movement with wind influence
+    const dx = ((Math.random() * 3) | 0) - 1 + (this.wind > 0 ? (Math.random() < Math.abs(this.wind) * 0.2 ? 1 : 0) : (this.wind < 0 ? (Math.random() < Math.abs(this.wind) * 0.2 ? -1 : 0) : 0));
     const dy = ((Math.random() * 3) | 0) - 1;
     const nx = x + dx, ny = y + dy;
     if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
@@ -828,6 +848,267 @@ class PhysicsEngine {
         g.markDirty(nx, ny); g.markActive(nx, ny);
       }
     }
+  }
+
+  // ── Ant ──
+  updateAnt(x, y, i, gDir) {
+    const g = this.grid;
+    const w = g.width, h = g.height;
+
+    // Ants move every ~3 ticks
+    if (g.tick % 3 !== 0) return;
+
+    // Use extra[i] to store direction (0=down, 1=left, 2=right, 3=up)
+    let dir = g.extra[i];
+
+    // Occasionally change direction randomly
+    if (Math.random() < 0.15) {
+      dir = (Math.random() * 4) | 0;
+      g.extra[i] = dir;
+    }
+
+    // Direction offsets: bias toward down and lateral
+    const dirOffsets = [
+      [0, gDir],   // down (with gravity)
+      [-1, 0],     // left
+      [1, 0],      // right
+      [0, -gDir],  // up (against gravity)
+    ];
+
+    // Try preferred direction first, then others
+    const tryOrder = [dir, (dir + 1) % 4, (dir + 3) % 4, (dir + 2) % 4];
+
+    for (const d of tryOrder) {
+      const [dx, dy] = dirOffsets[d];
+      const nx = x + dx, ny = y + dy;
+      if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+      const ni = ny * w + nx;
+      const nt = g.type[ni];
+
+      // Die if touching fire/lava
+      if (nt === E.FIRE || nt === E.LAVA) {
+        g.type[i] = E.FIRE;
+        const c = getElemColor(E.FIRE);
+        g.colorR[i] = c[0]; g.colorG[i] = c[1]; g.colorB[i] = c[2];
+        g.lifetime[i] = 10 + (Math.random() * 10) | 0;
+        g.markDirty(x, y); g.markActive(x, y);
+        return;
+      }
+
+      // Avoid dangerous elements
+      if (nt === E.WATER || nt === E.ACID) continue;
+
+      // Dig through sand/mud/snow/dirt
+      if (nt === E.SAND || nt === E.MUD || nt === E.SNOW) {
+        // Swap ant with the material, then remove the material (dig it)
+        this.swapCells(x, y, i, nx, ny, ni);
+        // Now the dug material is at (x, y), remove it
+        this.removeParticle(x, y, y * w + x);
+        g.extra[ni] = d; // ant keeps direction
+        g.markDirty(x, y); g.markActive(x, y);
+        return;
+      }
+
+      // Move into empty space
+      if (nt === E.EMPTY) {
+        this.swapCells(x, y, i, nx, ny, ni);
+        g.extra[ni] = d;
+        return;
+      }
+    }
+  }
+
+  // ── Firework ──
+  updateFirework(x, y, i, gDir) {
+    const g = this.grid;
+    const w = g.width, h = g.height;
+
+    // Initialize firework on first tick (extra starts at 0)
+    if (g.extra[i] === 0) {
+      // Set threshold: 40-60 ticks of flight
+      g.extra[i] = 1; // counter starts at 1
+      // Store threshold in lifetime (but don't use the auto-decrement)
+      // We'll use a simple approach: explode when extra reaches 40-60
+      // Store the threshold as 40 + random 20, encoded as extra starting at 1 and counting up
+    }
+
+    // Increment counter
+    g.extra[i]++;
+    const threshold = 45; // average flight time
+
+    // Explode when counter reaches threshold or hits something above
+    if (g.extra[i] >= threshold) {
+      this.explodeFirework(x, y, i);
+      return;
+    }
+
+    // Move upward (opposite gravity)
+    const above = y - gDir;
+    if (above < 0 || above >= h) {
+      this.explodeFirework(x, y, i);
+      return;
+    }
+
+    const iAbove = above * w + x;
+    const tAbove = g.type[iAbove];
+
+    if (tAbove === E.EMPTY) {
+      this.swapCells(x, y, i, x, above, iAbove);
+    } else {
+      // Hit something, explode
+      this.explodeFirework(x, y, i);
+    }
+  }
+
+  explodeFirework(x, y, i) {
+    const g = this.grid;
+    const w = g.width, h = g.height;
+
+    // Remove the firework
+    this.removeParticle(x, y, i);
+
+    // Create 20-40 sparks in a circle
+    const numSparks = 20 + ((Math.random() * 20) | 0);
+    for (let s = 0; s < numSparks; s++) {
+      const angle = (Math.PI * 2 * s) / numSparks + (Math.random() * 0.3);
+      const dist = 2 + ((Math.random() * 4) | 0);
+      const sx = x + Math.round(Math.cos(angle) * dist);
+      const sy = y + Math.round(Math.sin(angle) * dist);
+
+      if (!g.inBounds(sx, sy)) continue;
+      const si = sy * w + sx;
+      if (g.type[si] !== E.EMPTY) continue;
+
+      g.set(sx, sy, E.SPARK);
+      g.lifetime[si] = 10 + ((Math.random() * 10) | 0);
+      g.markDirty(sx, sy); g.markActive(sx, sy);
+    }
+  }
+
+  // ── Torch ──
+  updateTorch(x, y, i) {
+    const g = this.grid;
+    const w = g.width, h = g.height;
+    const gDir = this.gravityDir;
+
+    // Spawn fire in adjacent empty cells above (1 in 4 chance each tick)
+    if (Math.random() < 0.25) {
+      const above = y - gDir;
+      if (above >= 0 && above < h) {
+        // Try directly above and diagonally above
+        const positions = [[x, above], [x - 1, above], [x + 1, above]];
+        const [fx, fy] = positions[(Math.random() * positions.length) | 0];
+        if (g.inBounds(fx, fy)) {
+          const fi = fy * w + fx;
+          if (g.type[fi] === E.EMPTY) {
+            g.set(fx, fy, E.FIRE);
+            g.lifetime[fi] = 15 + ((Math.random() * 15) | 0);
+            g.temp[fi] = 500;
+            g.markDirty(fx, fy); g.markActive(fx, fy);
+          }
+        }
+      }
+    }
+
+    // Heat neighbors
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        const nx = x + dx, ny = y + dy;
+        if (!g.inBounds(nx, ny)) continue;
+        const ni = ny * w + nx;
+        if (g.type[ni] !== E.EMPTY) {
+          g.temp[ni] += 3;
+        }
+      }
+    }
+
+    g.markDirty(x, y); g.markActive(x, y);
+  }
+
+  // ── Battery ──
+  updateBattery(x, y, i) {
+    const g = this.grid;
+    const w = g.width;
+
+    // Check all 4 neighbors, energize adjacent wires
+    const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+    for (const [dx, dy] of dirs) {
+      const nx = x + dx, ny = y + dy;
+      if (!g.inBounds(nx, ny)) continue;
+      const ni = ny * w + nx;
+      if (g.type[ni] === E.WIRE) {
+        g.extra[ni] = 10; // fully energized
+        g.markDirty(nx, ny); g.markActive(nx, ny);
+      }
+    }
+
+    g.markDirty(x, y); g.markActive(x, y);
+  }
+
+  // ── Wire ──
+  updateWire(x, y, i) {
+    const g = this.grid;
+    const w = g.width;
+
+    if (g.extra[i] <= 0) return;
+
+    // Wire is energized
+    const energy = g.extra[i];
+    g.extra[i]--; // Decrement energy
+
+    // Brighten wire color based on energy level
+    const brightness = Math.min(energy * 20, 200);
+    g.colorR[i] = Math.min(200 + brightness / 4, 255) | 0;
+    g.colorG[i] = Math.min(120 + brightness / 2, 255) | 0;
+    g.colorB[i] = Math.min(40 + brightness, 240) | 0;
+
+    // Spread energy to adjacent wires
+    const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+    for (const [dx, dy] of dirs) {
+      const nx = x + dx, ny = y + dy;
+      if (!g.inBounds(nx, ny)) continue;
+      const ni = ny * w + nx;
+      const nt = g.type[ni];
+
+      if (nt === E.WIRE) {
+        const spreadEnergy = energy - 1;
+        if (spreadEnergy > g.extra[ni]) {
+          g.extra[ni] = spreadEnergy;
+          g.markDirty(nx, ny); g.markActive(nx, ny);
+        }
+      }
+
+      // Ignite TNT/Gunpowder/Fuse
+      if (nt === E.TNT || nt === E.GUNPOWDER || nt === E.FUSE) {
+        const nel = ELEMENTS[nt];
+        if (nel && nel.explosionPower > 1) {
+          this.explode(nx, ny, nel.explosionPower);
+        } else {
+          g.type[ni] = E.FIRE;
+          const c = getElemColor(E.FIRE);
+          g.colorR[ni] = c[0]; g.colorG[ni] = c[1]; g.colorB[ni] = c[2];
+          g.lifetime[ni] = 20 + (Math.random() * 20) | 0;
+          g.temp[ni] = 600;
+          g.markDirty(nx, ny); g.markActive(nx, ny);
+        }
+      }
+
+      // Occasionally spawn a spark in adjacent empty
+      if (nt === E.EMPTY && Math.random() < 0.02) {
+        g.set(nx, ny, E.SPARK);
+        g.lifetime[ni] = 8 + ((Math.random() * 7) | 0);
+        g.markDirty(nx, ny); g.markActive(nx, ny);
+      }
+    }
+
+    // Reset color when fully de-energized
+    if (g.extra[i] <= 0) {
+      const c = getElemColor(E.WIRE);
+      g.colorR[i] = c[0]; g.colorG[i] = c[1]; g.colorB[i] = c[2];
+    }
+
+    g.markDirty(x, y); g.markActive(x, y);
   }
 
   // Chemical interactions between specific element pairs

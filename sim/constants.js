@@ -91,6 +91,13 @@ const E = Object.freeze({
   CONCRETE:   39,
   CHARCOAL:   40,
   WALL:       41,
+  ANT:        42,
+  FIREWORK:   43,
+  SPARK:      44,
+  BATTERY:    45,
+  WIRE:       46,
+  TORCH:      47,
+  GOAL:       48,
 });
 
 // State types

@@ -70,6 +70,9 @@ class InputManager {
         case "c":
           document.getElementById("btn-clear").click();
           break;
+        case "w":
+          document.getElementById("btn-wind").click();
+          break;
       }
     });
   }
@@ -236,6 +239,10 @@ class InputManager {
             if ((el.state === STATE.POWDER || el.state === STATE.LIQUID || el.state === STATE.GAS)
                 && Math.random() < 0.35) continue;
             g.set(x, y, elem);
+            // Count for challenge mode
+            if (window.challengeManager && window.challengeManager.active) {
+              window.challengeManager.countParticle();
+            }
           }
         }
       }

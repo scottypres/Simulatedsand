@@ -5,6 +5,8 @@
   // Mutable sim state
   let grid, renderer, physics, input, ui;
   let canvas = document.getElementById("simCanvas");
+  const challengeManager = new ChallengeManager();
+  window.challengeManager = challengeManager;
 
   function initSim() {
     grid = new SimGrid(SIM_WIDTH, SIM_HEIGHT);
@@ -124,6 +126,13 @@
         physics.update();
         runInteractions();
       }
+      // Challenge win check
+      if (challengeManager.active && !challengeManager.won) {
+        if (challengeManager.checkWin(grid)) {
+          showChallengeWin();
+        }
+        updateChallengeHud();
+      }
     }
 
     renderer.render();
@@ -144,6 +153,69 @@
 
   // Start
   requestAnimationFrame(loop);
+
+  // ── Challenge HUD & Win ──
+  function updateChallengeHud() {
+    const hud = document.getElementById("challenge-hud");
+    if (!challengeManager.active) {
+      hud.classList.remove("visible");
+      return;
+    }
+    hud.classList.add("visible");
+    const level = CHALLENGE_LEVELS[challengeManager.currentLevel];
+    document.getElementById("ch-level-name").textContent = level.name;
+    const elapsed = ((Date.now() - challengeManager.startTime) / 1000) | 0;
+    const mins = (elapsed / 60) | 0;
+    const secs = elapsed % 60;
+    document.getElementById("ch-timer").textContent = mins + ":" + (secs < 10 ? "0" : "") + secs;
+    document.getElementById("ch-parts").textContent = challengeManager.particlesUsed + " placed";
+  }
+
+  function showChallengeWin() {
+    const win = document.getElementById("challenge-win");
+    const bg = document.getElementById("overlay-bg");
+    const stars = challengeManager.stars;
+    document.getElementById("win-stars").textContent =
+      (stars >= 1 ? "\u2B50" : "\u2606") + (stars >= 2 ? "\u2B50" : "\u2606") + (stars >= 3 ? "\u2B50" : "\u2606");
+    const elapsed = ((Date.now() - challengeManager.startTime) / 1000) | 0;
+    document.getElementById("win-time").textContent =
+      "Time: " + elapsed + "s | Particles: " + challengeManager.particlesUsed;
+    win.classList.add("visible");
+    bg.classList.add("visible");
+  }
+
+  window.showChallengeWin = showChallengeWin;
+  window.updateChallengeHud = updateChallengeHud;
+
+  document.getElementById("btn-win-next").addEventListener("click", () => {
+    const next = challengeManager.currentLevel + 1;
+    document.getElementById("challenge-win").classList.remove("visible");
+    document.getElementById("overlay-bg").classList.remove("visible");
+    if (next < CHALLENGE_LEVELS.length) {
+      challengeManager.startLevel(next, grid);
+      if (ui) ui.onChallengeStart();
+    } else {
+      challengeManager.quit();
+      grid.clear();
+      if (ui) ui.onChallengeEnd();
+    }
+  });
+
+  document.getElementById("btn-win-retry").addEventListener("click", () => {
+    document.getElementById("challenge-win").classList.remove("visible");
+    document.getElementById("overlay-bg").classList.remove("visible");
+    challengeManager.startLevel(challengeManager.currentLevel, grid);
+    if (ui) ui.onChallengeStart();
+  });
+
+  document.getElementById("btn-win-quit").addEventListener("click", () => {
+    document.getElementById("challenge-win").classList.remove("visible");
+    document.getElementById("overlay-bg").classList.remove("visible");
+    challengeManager.quit();
+    grid.clear();
+    document.getElementById("challenge-hud").classList.remove("visible");
+    if (ui) ui.onChallengeEnd();
+  });
 
   // Prevent default iOS behaviors
   document.addEventListener("gesturestart", (e) => e.preventDefault());

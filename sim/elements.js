@@ -261,6 +261,41 @@ defElem(E.WALL, "Wall", "tools", STATE.STATIC, {
   density: 100, hardness: 10, corrosionResist: 1.0, meltPoint: 99999,
 });
 
+defElem(E.ANT, "Ant", "nature", STATE.SPECIAL, {
+  colors: [[140,50,30],[130,45,25],[150,55,35],[135,48,28]],
+  density: 2, lifetime: 0, hardness: 1,
+});
+
+defElem(E.FIREWORK, "Firework", "explosive", STATE.POWDER, {
+  colors: [[200,50,50],[50,50,200],[50,200,50],[200,200,50]],
+  density: 1.5, lifetime: 0,
+});
+
+defElem(E.SPARK, "Spark", "explosive", STATE.GAS, {
+  colors: [[255,255,200],[255,240,150],[255,255,180],[255,230,130]],
+  density: 0.08, lifetime: 15, emitLight: 3,
+});
+
+defElem(E.BATTERY, "Battery", "special", STATE.STATIC, {
+  colors: [[80,80,40],[75,75,35],[85,85,45],[70,70,30]],
+  density: 8, hardness: 9, corrosionResist: 1.0,
+});
+
+defElem(E.WIRE, "Wire", "special", STATE.STATIC, {
+  colors: [[200,120,40],[190,110,35],[210,130,45],[185,105,30]],
+  density: 6, hardness: 5, conductivity: 1.0,
+});
+
+defElem(E.TORCH, "Torch", "tools", STATE.STATIC, {
+  colors: [[180,100,30],[170,90,25],[190,110,35],[175,95,28]],
+  density: 3, hardness: 5, corrosionResist: 1.0, emitLight: 3,
+});
+
+defElem(E.GOAL, "Goal", "tools", STATE.STATIC, {
+  colors: [[50,255,100],[60,255,110],[40,245,90],[70,255,120]],
+  density: 100, hardness: 10, corrosionResist: 1.0,
+});
+
 // Utility to get a random color for an element
 function getElemColor(id) {
   const el = ELEMENTS[id];

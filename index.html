@@ -223,6 +223,79 @@
     #save-name-input:focus { border-color: #e94560; }
     #save-name-input::placeholder { color: #556; }
     .file-input-hidden { position: absolute; width: 0; height: 0; opacity: 0; overflow: hidden; }
+
+    /* ── Challenge Mode UI ── */
+    #challenge-hud {
+      position: absolute; top: 6px; left: 50%; transform: translateX(-50%);
+      background: rgba(22,33,62,0.92); padding: 4px 14px; border-radius: 10px;
+      border: 1px solid #0f3460; display: none; z-index: 5;
+      color: #ccc; font-size: 12px; text-align: center; pointer-events: none;
+      backdrop-filter: blur(6px); max-width: 90%;
+    }
+    #challenge-hud.visible { display: block; }
+    #challenge-hud .ch-name { color: #4fc3f7; font-weight: 600; }
+    #challenge-hud .ch-timer { color: #e0e0e0; margin-left: 8px; font-variant-numeric: tabular-nums; }
+    #challenge-hud .ch-parts { color: #8899aa; margin-left: 8px; }
+
+    #challenge-win {
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: rgba(22,33,62,0.98); padding: 28px 24px; border-radius: 16px;
+      border: 2px solid #4fc3f7; max-width: 300px; width: 85%;
+      z-index: 100; display: none; color: #ccc; font-size: 14px;
+      text-align: center;
+    }
+    #challenge-win.visible { display: block; }
+    #challenge-win h2 { color: #4fc3f7; margin: 0 0 6px; font-size: 20px; }
+    #challenge-win .stars-display { font-size: 32px; margin: 8px 0; }
+    #challenge-win .win-time { color: #8899aa; font-size: 12px; margin: 4px 0 16px; }
+    #challenge-win .win-btns { display: flex; gap: 8px; justify-content: center; }
+    #challenge-win .win-btns button {
+      padding: 8px 16px; border-radius: 10px; border: none;
+      font-size: 13px; cursor: pointer; font-weight: 600;
+    }
+    #btn-win-next { background: #4fc3f7; color: #1a1a2e; }
+    #btn-win-retry { background: #0f3460; color: #e0e0e0; }
+    #btn-win-quit { background: #0f3460; color: #e0e0e0; }
+
+    #level-select-overlay {
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: rgba(22,33,62,0.98); padding: 20px; border-radius: 16px;
+      border: 1px solid #0f3460; max-width: 360px; width: 92%;
+      z-index: 100; display: none; color: #ccc; font-size: 13px;
+      max-height: 80vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    }
+    #level-select-overlay.visible { display: block; }
+    #level-select-overlay h2 { color: #e94560; margin: 0 0 12px; font-size: 17px; }
+    #level-select-overlay .close-btn {
+      position: absolute; top: 12px; right: 12px; background: none;
+      border: none; color: #888; font-size: 20px; cursor: pointer;
+    }
+    .level-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+      gap: 8px;
+    }
+    .level-card {
+      background: rgba(15,52,96,0.5); border-radius: 10px; padding: 10px 8px;
+      text-align: center; cursor: pointer; border: 2px solid transparent;
+      transition: border-color 0.15s;
+    }
+    .level-card:active { border-color: #4fc3f7; }
+    .level-card .lv-num { color: #4fc3f7; font-size: 18px; font-weight: 700; }
+    .level-card .lv-name { color: #bdc3c7; font-size: 10px; margin-top: 4px; line-height: 1.2; }
+    .level-card .lv-stars { font-size: 14px; margin-top: 4px; }
+    .level-total-stars { text-align: center; margin-top: 12px; color: #8899aa; font-size: 12px; }
+    .level-back-sandbox {
+      display: block; width: 100%; margin-top: 12px; padding: 10px;
+      background: #0f3460; border: none; border-radius: 10px;
+      color: #e0e0e0; font-size: 13px; cursor: pointer; text-align: center;
+    }
+
+    #wind-indicator {
+      position: absolute; bottom: 6px; right: 6px;
+      background: rgba(22,33,62,0.8); padding: 2px 8px; border-radius: 8px;
+      color: #8899aa; font-size: 10px; display: none; pointer-events: none; z-index: 5;
+    }
+    #wind-indicator.visible { display: block; }
   </style>
 </head>
 <body>
@@ -241,6 +314,8 @@
       </div>
       <div id="toolbar-right">
         <button class="btn" id="btn-source" title="Source Mode">S</button>
+        <button class="btn" id="btn-wind" title="Wind">W</button>
+        <button class="btn" id="btn-challenge" title="Challenge Mode">&#127942;</button>
         <button class="btn" id="btn-saves" title="Save/Load">&#9776;</button>
         <button class="btn" id="btn-gravity" title="Gravity">G</button>
         <button class="btn" id="btn-settings" title="Settings">&#9881;</button>
@@ -250,6 +325,12 @@
     <div id="canvas-container">
       <canvas id="simCanvas"></canvas>
       <div id="source-banner">SOURCE MODE</div>
+      <div id="challenge-hud">
+        <span class="ch-name" id="ch-level-name"></span>
+        <span class="ch-timer" id="ch-timer">0:00</span>
+        <span class="ch-parts" id="ch-parts"></span>
+      </div>
+      <div id="wind-indicator">Wind: 0</div>
     </div>
     <div id="element-panel">
       <div id="panel-toggle"><div class="handle"></div></div>
@@ -351,6 +432,7 @@
         <tr><td><span class="key">S</span></td><td>Toggle Source mode</td></tr>
         <tr><td><span class="key">G</span></td><td>Flip gravity</td></tr>
         <tr><td><span class="key">C</span></td><td>Clear canvas</td></tr>
+        <tr><td><span class="key">W</span></td><td>Cycle wind</td></tr>
         <tr><td><span class="key">Ctrl+Z</span></td><td>Undo</td></tr>
       </table>
     </div>
@@ -363,6 +445,8 @@
         <li><b>↩</b> — Undo (up to 5 snapshots)</li>
         <li><b>Brush size</b> — Tap the number to show a slider (1–20)</li>
         <li><b>S</b> — Source mode (see below)</li>
+        <li><b>W</b> — Cycle wind direction and strength</li>
+        <li><b>Trophy</b> — Challenge mode with puzzle levels</li>
         <li><b>G</b> — Flip gravity direction</li>
       </ul>
     </div>
@@ -450,10 +534,45 @@
       <div class="elem-row"><span class="dot" style="background:rgb(180,100,255)"></span> <b>Plasma</b> — Superheated gas. Heats everything nearby.</div>
     </div>
 
+    <h3>Nature (cont.)</h3>
+    <div class="section">
+      <div class="elem-row"><span class="dot" style="background:rgb(140,50,30)"></span> <b>Ant</b> — Living creature that digs through sand, mud, and snow. Dies in fire/lava.</div>
+    </div>
+
+    <h3>Explosives (cont.)</h3>
+    <div class="section">
+      <div class="elem-row"><span class="dot" style="background:rgb(200,50,50)"></span> <b>Firework</b> — Launches upward and explodes into colorful sparks.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(255,255,200)"></span> <b>Spark</b> — Brief bright particle from firework explosions.</div>
+    </div>
+
+    <h3>Electronics</h3>
+    <div class="section">
+      <div class="elem-row"><span class="dot" style="background:rgb(80,80,40)"></span> <b>Battery</b> — Powers adjacent wire with electrical energy.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(200,120,40)"></span> <b>Wire</b> — Conducts energy from batteries. Glows when powered. Detonates TNT/gunpowder on contact.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(180,100,30)"></span> <b>Torch</b> — Produces fire above it continuously. Heats neighbors.</div>
+    </div>
+
     <h3>Tools</h3>
     <div class="section">
       <div class="elem-row"><span class="dot" style="background:rgb(26,26,46)"></span> <b>Erase</b> — Remove particles (and sources in Source mode).</div>
       <div class="elem-row"><span class="dot" style="background:rgb(80,80,90)"></span> <b>Wall</b> — Indestructible barrier. Immune to everything.</div>
+      <div class="elem-row"><span class="dot" style="background:rgb(50,255,100)"></span> <b>Goal</b> — Target marker used in challenge mode levels.</div>
+    </div>
+
+    <h2>Challenge Mode</h2>
+    <div class="section">
+      <p>Tap the <b>trophy button</b> in the toolbar to open the level selector. 12 puzzle levels challenge you to use elements creatively:</p>
+      <ul>
+        <li>Each level has a goal and a limited set of allowed elements</li>
+        <li>Earn 1-3 stars based on speed and efficiency</li>
+        <li>Progress is saved automatically</li>
+        <li>Tap "Back to Sandbox" to return to free play at any time</li>
+      </ul>
+    </div>
+
+    <h2>Wind</h2>
+    <div class="section">
+      <p>Tap <b>W</b> to cycle wind strength: Off &rarr; Right &rarr; Strong Right &rarr; Left &rarr; Strong Left &rarr; Off. Wind affects gas movement and light powders.</p>
     </div>
 
     <h2>Reactions</h2>
@@ -513,12 +632,32 @@
     </div>
   </div>
 
+  <div id="level-select-overlay">
+    <button class="close-btn" id="level-select-close">&#10005;</button>
+    <h2>Challenge Mode</h2>
+    <div class="level-grid" id="level-grid"></div>
+    <div class="level-total-stars" id="level-total-stars"></div>
+    <button class="level-back-sandbox" id="btn-back-sandbox">Back to Sandbox</button>
+  </div>
+
+  <div id="challenge-win">
+    <h2>Level Complete!</h2>
+    <div class="stars-display" id="win-stars"></div>
+    <div class="win-time" id="win-time"></div>
+    <div class="win-btns">
+      <button id="btn-win-retry">Retry</button>
+      <button id="btn-win-next">Next</button>
+      <button id="btn-win-quit">Quit</button>
+    </div>
+  </div>
+
   <script src="/sim/constants.js"></script>
   <script src="/sim/elements.js"></script>
   <script src="/sim/grid.js"></script>
   <script src="/sim/physics.js"></script>
   <script src="/sim/renderer.js"></script>
   <script src="/sim/input.js"></script>
+  <script src="/sim/challenges.js"></script>
   <script src="/sim/ui.js"></script>
   <script src="/sim/main.js"></script>
 </body>

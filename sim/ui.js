@@ -16,6 +16,8 @@ class UIController {
     this.setupBrushSlider();
     this.setupSettings();
     this.setupSaveLoad();
+    this.setupChallengeUI();
+    this.setupWind();
 
     // Select sand by default
     this.selectElement(E.SAND);
@@ -43,8 +45,12 @@ class UIController {
     const container = document.getElementById("element-grid");
     container.innerHTML = "";
 
+    const cm = window.challengeManager;
+    const allowed = cm && cm.active ? cm.allowedElements : null;
+
     for (const el of ELEMENTS) {
       if (!el || el.category !== this.activeCategory) continue;
+      if (allowed && !allowed.includes(el.id)) continue;
 
       const btn = document.createElement("div");
       btn.className = "elem-btn" + (this.input.selectedElement === el.id ? " selected" : "");
@@ -140,6 +146,8 @@ class UIController {
       document.getElementById("info-overlay").classList.remove("visible");
       document.getElementById("settings-overlay").classList.remove("visible");
       document.getElementById("savelist-overlay").classList.remove("visible");
+      document.getElementById("level-select-overlay").classList.remove("visible");
+      document.getElementById("challenge-win").classList.remove("visible");
       document.getElementById("overlay-bg").classList.remove("visible");
     });
   }
@@ -287,6 +295,116 @@ class UIController {
         window.rebuildSim(pendingScale);
       }
       closeSettings();
+    });
+  }
+
+  setupChallengeUI() {
+    const self = this;
+    const btnChallenge = document.getElementById("btn-challenge");
+    const overlay = document.getElementById("level-select-overlay");
+    const bg = document.getElementById("overlay-bg");
+    const closeBtn = document.getElementById("level-select-close");
+    const levelGrid = document.getElementById("level-grid");
+    const totalStars = document.getElementById("level-total-stars");
+    const backBtn = document.getElementById("btn-back-sandbox");
+
+    function renderLevelSelect() {
+      const cm = window.challengeManager;
+      if (!cm) return;
+      const levels = cm.getLevels();
+      levelGrid.innerHTML = "";
+      for (let i = 0; i < levels.length; i++) {
+        const card = document.createElement("div");
+        card.className = "level-card";
+        const stars = cm.getStars(i);
+        card.innerHTML =
+          '<div class="lv-num">' + (i + 1) + '</div>' +
+          '<div class="lv-name">' + levels[i].name + '</div>' +
+          '<div class="lv-stars">' + (stars >= 1 ? "\u2B50" : "\u2606") + (stars >= 2 ? "\u2B50" : "\u2606") + (stars >= 3 ? "\u2B50" : "\u2606") + '</div>';
+        card.addEventListener("click", () => startLevel(i));
+        levelGrid.appendChild(card);
+      }
+      totalStars.textContent = "Total Stars: " + cm.getTotalStars() + " / " + (levels.length * 3);
+    }
+
+    function startLevel(idx) {
+      const cm = window.challengeManager;
+      const grid = self.input.grid;
+      cm.startLevel(idx, grid);
+      self.onChallengeStart();
+      closeOverlay();
+    }
+
+    function openOverlay() {
+      renderLevelSelect();
+      overlay.classList.add("visible");
+      bg.classList.add("visible");
+    }
+
+    function closeOverlay() {
+      overlay.classList.remove("visible");
+      bg.classList.remove("visible");
+    }
+
+    btnChallenge.addEventListener("click", openOverlay);
+    closeBtn.addEventListener("click", closeOverlay);
+    backBtn.addEventListener("click", () => {
+      const cm = window.challengeManager;
+      if (cm && cm.active) {
+        cm.quit();
+        self.input.grid.clear();
+        document.getElementById("challenge-hud").classList.remove("visible");
+        self.onChallengeEnd();
+      }
+      closeOverlay();
+    });
+  }
+
+  onChallengeStart() {
+    // Rebuild palette for allowed elements
+    this.buildCategoryTabs();
+    this.buildElementGrid();
+    // Select first allowed non-empty element
+    const cm = window.challengeManager;
+    if (cm && cm.allowedElements) {
+      const first = cm.allowedElements.find(id => id !== E.EMPTY) || E.EMPTY;
+      this.selectElement(first);
+    }
+  }
+
+  onChallengeEnd() {
+    this.buildCategoryTabs();
+    this.buildElementGrid();
+    this.selectElement(E.SAND);
+  }
+
+  setupWind() {
+    const self = this;
+    const btnWind = document.getElementById("btn-wind");
+    const windIndicator = document.getElementById("wind-indicator");
+    // Wind states: 0, 1, 2, -1, -2
+    const windStates = [0, 1, 2, -1, -2];
+    let windIdx = 0;
+
+    function updateWindDisplay() {
+      const w = self.input.physics.wind;
+      if (w === 0) {
+        btnWind.classList.remove("active");
+        windIndicator.classList.remove("visible");
+      } else {
+        btnWind.classList.add("active");
+        windIndicator.classList.add("visible");
+        const arrow = w > 0 ? "\u2192" : "\u2190";
+        const strength = Math.abs(w) > 1 ? " Strong" : "";
+        windIndicator.textContent = "Wind: " + arrow + strength;
+      }
+    }
+
+    btnWind.addEventListener("click", () => {
+      windIdx = (windIdx + 1) % windStates.length;
+      self.input.physics.wind = windStates[windIdx];
+      updateWindDisplay();
+      if (navigator.vibrate) navigator.vibrate(10);
     });
   }
 
