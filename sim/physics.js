@@ -18,6 +18,12 @@ class PhysicsEngine {
     const w = g.width, h = g.height;
     const gDir = this.gravityDir;
 
+    // When accelerometer is active, keep all chunks awake so particles
+    // resume immediately when the phone is tilted back from flat
+    if (this.gravityStrength < 1 || this.gravityX !== 0) {
+      g.activeChunks.fill(1);
+    }
+
     // Open bottom: delete particles on the gravity-facing edge
     if (this.openBottom) {
       this.processOpenEdge(w, h, gDir);
