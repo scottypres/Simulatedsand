@@ -131,8 +131,12 @@
         if (challengeManager.checkWin(grid)) {
           showChallengeWin();
         }
-        updateChallengeHud();
       }
+    }
+
+    // Always update challenge HUD (even when paused) so timer stays visible
+    if (challengeManager.active && !challengeManager.won) {
+      updateChallengeHud();
     }
 
     renderer.render();
@@ -164,11 +168,11 @@
     hud.classList.add("visible");
     const level = CHALLENGE_LEVELS[challengeManager.currentLevel];
     document.getElementById("ch-level-name").textContent = level.name;
+    document.getElementById("ch-desc").textContent = level.description || "";
     const elapsed = ((Date.now() - challengeManager.startTime) / 1000) | 0;
     const mins = (elapsed / 60) | 0;
     const secs = elapsed % 60;
     document.getElementById("ch-timer").textContent = mins + ":" + (secs < 10 ? "0" : "") + secs;
-    document.getElementById("ch-parts").textContent = challengeManager.particlesUsed + " placed";
   }
 
   function showChallengeWin() {

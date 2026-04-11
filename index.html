@@ -227,15 +227,16 @@
     /* ── Challenge Mode UI ── */
     #challenge-hud {
       position: absolute; top: 6px; left: 50%; transform: translateX(-50%);
-      background: rgba(22,33,62,0.92); padding: 4px 14px; border-radius: 10px;
-      border: 1px solid #0f3460; display: none; z-index: 5;
+      background: rgba(22,33,62,0.95); padding: 6px 16px 8px; border-radius: 12px;
+      border: 1px solid #4fc3f7; display: none; z-index: 5;
       color: #ccc; font-size: 12px; text-align: center; pointer-events: none;
-      backdrop-filter: blur(6px); max-width: 90%;
+      backdrop-filter: blur(6px); max-width: 92%; min-width: 200px;
     }
     #challenge-hud.visible { display: block; }
-    #challenge-hud .ch-name { color: #4fc3f7; font-weight: 600; }
-    #challenge-hud .ch-timer { color: #e0e0e0; margin-left: 8px; font-variant-numeric: tabular-nums; }
-    #challenge-hud .ch-parts { color: #8899aa; margin-left: 8px; }
+    #challenge-hud .ch-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    #challenge-hud .ch-name { color: #4fc3f7; font-weight: 600; font-size: 13px; }
+    #challenge-hud .ch-timer { color: #e0e0e0; font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 600; }
+    #challenge-hud .ch-desc { color: #bdc3c7; font-size: 11px; margin-top: 3px; line-height: 1.3; }
 
     #challenge-win {
       position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -281,7 +282,8 @@
     }
     .level-card:active { border-color: #4fc3f7; }
     .level-card .lv-num { color: #4fc3f7; font-size: 18px; font-weight: 700; }
-    .level-card .lv-name { color: #bdc3c7; font-size: 10px; margin-top: 4px; line-height: 1.2; }
+    .level-card .lv-name { color: #bdc3c7; font-size: 11px; margin-top: 4px; line-height: 1.2; font-weight: 600; }
+    .level-card .lv-desc { color: #667; font-size: 9px; margin-top: 2px; line-height: 1.2; }
     .level-card .lv-stars { font-size: 14px; margin-top: 4px; }
     .level-total-stars { text-align: center; margin-top: 12px; color: #8899aa; font-size: 12px; }
     .level-back-sandbox {
@@ -326,9 +328,11 @@
       <canvas id="simCanvas"></canvas>
       <div id="source-banner">SOURCE MODE</div>
       <div id="challenge-hud">
-        <span class="ch-name" id="ch-level-name"></span>
-        <span class="ch-timer" id="ch-timer">0:00</span>
-        <span class="ch-parts" id="ch-parts"></span>
+        <div class="ch-top">
+          <span class="ch-name" id="ch-level-name"></span>
+          <span class="ch-timer" id="ch-timer">0:00</span>
+        </div>
+        <div class="ch-desc" id="ch-desc"></div>
       </div>
       <div id="wind-indicator">Wind: 0</div>
     </div>

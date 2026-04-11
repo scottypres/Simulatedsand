@@ -320,6 +320,7 @@ class UIController {
         card.innerHTML =
           '<div class="lv-num">' + (i + 1) + '</div>' +
           '<div class="lv-name">' + levels[i].name + '</div>' +
+          '<div class="lv-desc">' + (levels[i].description || '') + '</div>' +
           '<div class="lv-stars">' + (stars >= 1 ? "\u2B50" : "\u2606") + (stars >= 2 ? "\u2B50" : "\u2606") + (stars >= 3 ? "\u2B50" : "\u2606") + '</div>';
         card.addEventListener("click", () => startLevel(i));
         levelGrid.appendChild(card);
@@ -346,33 +347,58 @@ class UIController {
       bg.classList.remove("visible");
     }
 
-    btnChallenge.addEventListener("click", openOverlay);
-    closeBtn.addEventListener("click", closeOverlay);
-    backBtn.addEventListener("click", () => {
-      const cm = window.challengeManager;
-      if (cm && cm.active) {
-        cm.quit();
-        self.input.grid.clear();
-        document.getElementById("challenge-hud").classList.remove("visible");
-        self.onChallengeEnd();
-      }
-      closeOverlay();
-    });
+    if (btnChallenge) {
+      btnChallenge.addEventListener("click", openOverlay);
+    }
+    if (closeBtn) {
+      closeBtn.addEventListener("click", closeOverlay);
+    }
+    if (backBtn) {
+      backBtn.addEventListener("click", () => {
+        const cm = window.challengeManager;
+        if (cm && cm.active) {
+          cm.quit();
+          self.input.grid.clear();
+          document.getElementById("challenge-hud").classList.remove("visible");
+          self.onChallengeEnd();
+        }
+        closeOverlay();
+      });
+    }
   }
 
   onChallengeStart() {
+    // Show HUD immediately with instructions
+    const cm = window.challengeManager;
+    if (cm && cm.active) {
+      const level = CHALLENGE_LEVELS[cm.currentLevel];
+      const hud = document.getElementById("challenge-hud");
+      hud.classList.add("visible");
+      document.getElementById("ch-level-name").textContent = level.name;
+      document.getElementById("ch-desc").textContent = level.description || "";
+      document.getElementById("ch-timer").textContent = "0:00";
+    }
     // Rebuild palette for allowed elements
     this.buildCategoryTabs();
     this.buildElementGrid();
     // Select first allowed non-empty element
-    const cm = window.challengeManager;
     if (cm && cm.allowedElements) {
       const first = cm.allowedElements.find(id => id !== E.EMPTY) || E.EMPTY;
       this.selectElement(first);
     }
+    // Unpause if paused
+    if (this.paused) {
+      this.paused = false;
+      const btnPlay = document.getElementById("btn-play");
+      if (btnPlay) {
+        btnPlay.textContent = "\u23F8";
+        btnPlay.classList.remove("active");
+      }
+    }
   }
 
   onChallengeEnd() {
+    document.getElementById("challenge-hud").classList.remove("visible");
     this.buildCategoryTabs();
     this.buildElementGrid();
     this.selectElement(E.SAND);
